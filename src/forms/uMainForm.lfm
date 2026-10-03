@@ -8,6 +8,7 @@ object MainForm: TMainForm
   ClientWidth = 1050
   Menu = MainMenu
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   Position = poScreenCenter
   LCLVersion = '4.8'
   object ToolBar: TToolBar
@@ -82,6 +83,7 @@ object MainForm: TMainForm
         Width = 248
         Align = alClient
         HideSelection = False
+        OnChange = ProjectTreeViewChange
         TabOrder = 0
       end
     end

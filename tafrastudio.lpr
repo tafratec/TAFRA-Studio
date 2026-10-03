@@ -7,6 +7,8 @@ uses
   Forms,
   uMainForm;
 
+{$R tafrastudio.res}
+
 begin
   Application.Scaled := True;
   Application.Title := 'TAFRA Studio';

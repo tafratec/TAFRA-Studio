@@ -10,30 +10,20 @@ general-purpose IDE.
 - Free Pascal Compiler supplied with Lazarus
 - Lazarus Component Library (LCL)
 
-## Phase 1 status
+## Manuals
 
-The initial application shell is available. It provides a resizable main window
-with Project Explorer, Workspace, Output/Log, and status areas. You can select
-and close a project directory; the selected directory is only stored in memory
-and is never scanned or changed.
+Project manuals are maintained under `docs/manual`.
 
-Project detection and all project analysis are future Phase 1 work.
+Start with:
 
-## Structure
+- `docs/manual/01- overview.md`
+- `docs/manual/02- architecture.md`
+- `docs/manual/03- build-and-run.md`
+- `docs/manual/04- php-tooling.md`
+- `docs/manual/05- project-understanding.md`
+- `docs/manual/06- project-analyzer.md`
 
-```text
-src/forms       Lazarus forms and UI
-src/core        Application infrastructure
-src/project     Project representation and inspection (future)
-src/framework   TAFRA framework knowledge (future)
-src/services    Application services (future)
-src/utils       Small reusable utilities
-resources       Icons and templates
-config          Studio configuration
-tests           Tests and fixtures
-```
+## Build and Run
 
-## Build and run
-
-Open `tafrastudio.lpi` in Lazarus 4.8, then choose **Run → Run** (F9), or build
-the project from the IDE. The project uses only standard Lazarus LCL controls.
+Open `tafrastudio.lpi` in Lazarus 4.8, then choose `Run > Run` (F9), or build
+the project from the IDE. The project uses standard Lazarus LCL controls.

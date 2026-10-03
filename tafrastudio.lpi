@@ -39,6 +39,61 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="uMainForm"/>
       </Unit>
+      <Unit>
+        <Filename Value="src/core/uResultTypes.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uResultTypes"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/core/uAppPaths.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uAppPaths"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/core/uLogger.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uLogger"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/services/uProcessRunner.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uProcessRunner"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/services/uPHPToolRunner.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uPHPToolRunner"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/models/uProjectModel.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uProjectModel"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/framework/uTAFRAFrameworkRules.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uTAFRAFrameworkRules"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/services/uProjectScanner.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uProjectScanner"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/services/uProjectSession.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uProjectSession"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/services/uProjectAnalyzer.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uProjectAnalyzer"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/ui/uProjectExplorerPresenter.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uProjectExplorerPresenter"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -48,7 +103,7 @@
       <Filename Value="tafrastudio"/>
     </Target>
     <SearchPaths>
-      <OtherUnitFiles Value="src\\forms"/>
+      <OtherUnitFiles Value="src\\forms;src\\core;src\\services;src\\models;src\\framework;src\\ui;src\\utils"/>
       <UnitOutputDirectory Value="lib\\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>
