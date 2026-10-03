@@ -40,6 +40,11 @@
         <UnitName Value="uMainForm"/>
       </Unit>
       <Unit>
+        <Filename Value="src/forms/uSettingsForm.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uSettingsForm"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/core/uResultTypes.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uResultTypes"/>
@@ -65,9 +70,24 @@
         <UnitName Value="uPHPToolRunner"/>
       </Unit>
       <Unit>
+        <Filename Value="src/services/uSettingsService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uSettingsService"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/services/uComposerRunner.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uComposerRunner"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/models/uProjectModel.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uProjectModel"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/models/uStudioSettings.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uStudioSettings"/>
       </Unit>
       <Unit>
         <Filename Value="src/framework/uTAFRAFrameworkRules.pas"/>
@@ -88,6 +108,11 @@
         <Filename Value="src/services/uProjectAnalyzer.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uProjectAnalyzer"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/services/uModuleManagementService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uModuleManagementService"/>
       </Unit>
       <Unit>
         <Filename Value="src/ui/uProjectExplorerPresenter.pas"/>

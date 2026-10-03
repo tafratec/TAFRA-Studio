@@ -5,16 +5,19 @@ unit uPHPToolRunner;
 interface
 
 uses
-  Classes, uAppPaths, uProcessRunner, uResultTypes;
+  Classes, uAppPaths, uProcessRunner, uResultTypes, uSettingsService;
 
 type
   TPHPToolRunner = class
   private
     FAppPaths: TAppPaths;
     FProcessRunner: TProcessRunner;
+    FSettingsService: TSettingsService;
     function ParseToolResult(const ARawOutput: string): TPHPToolResult;
+    function PHPExecutablePath: string;
   public
-    constructor Create(AAppPaths: TAppPaths; AProcessRunner: TProcessRunner);
+    constructor Create(AAppPaths: TAppPaths; AProcessRunner: TProcessRunner;
+      ASettingsService: TSettingsService = nil);
     function ExecuteTool(const AToolPath: string; AArguments: TStrings;
       const AWorkingDirectory: string = ''): TPHPToolResult;
     function ExecuteHealthCheck: TPHPToolResult;
@@ -26,11 +29,20 @@ uses
   fpjson, jsonparser, SysUtils;
 
 constructor TPHPToolRunner.Create(AAppPaths: TAppPaths;
-  AProcessRunner: TProcessRunner);
+  AProcessRunner: TProcessRunner; ASettingsService: TSettingsService);
 begin
   inherited Create;
   FAppPaths := AAppPaths;
   FProcessRunner := AProcessRunner;
+  FSettingsService := ASettingsService;
+end;
+
+function TPHPToolRunner.PHPExecutablePath: string;
+begin
+  if Assigned(FSettingsService) then
+    Result := FSettingsService.StudioPHPExecutablePath
+  else
+    Result := FAppPaths.PHPExecutablePath;
 end;
 
 function TPHPToolRunner.ParseToolResult(const ARawOutput: string): TPHPToolResult;
@@ -102,11 +114,21 @@ begin
       for I := 0 to AArguments.Count - 1 do
         Args.Add(AArguments[I]);
 
-    ProcessResult := FProcessRunner.Execute(FAppPaths.PHPExecutablePath, Args,
+    ProcessResult := FProcessRunner.Execute(PHPExecutablePath, Args,
       AWorkingDirectory, 10000);
     try
       if not ProcessResult.Success then
       begin
+        if Trim(ProcessResult.StdOutText) <> '' then
+        begin
+          Result := ParseToolResult(Trim(ProcessResult.StdOutText));
+          if (Result.ErrorCode <> 'JSON_PARSE_ERROR') and
+            (Result.ErrorCode <> 'INVALID_JSON_RESPONSE') then
+            Exit;
+
+          Result.Free;
+        end;
+
         Result := TPHPToolResult.Create;
         Result.Success := False;
         Result.ErrorCode := ProcessResult.ErrorCode;

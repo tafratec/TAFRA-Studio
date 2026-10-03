@@ -84,6 +84,7 @@ object MainForm: TMainForm
         Align = alClient
         HideSelection = False
         OnChange = ProjectTreeViewChange
+        OnMouseDown = ProjectTreeViewMouseDown
         TabOrder = 0
       end
     end
@@ -142,6 +143,17 @@ object MainForm: TMainForm
         Caption = '&Output'
         Checked = True
         OnClick = OutputMenuItemClick
+      end
+    end
+    object ProjectMenuItem: TMenuItem
+      Caption = '&Project'
+      Enabled = False
+    end
+    object SettingsMenuItem: TMenuItem
+      Caption = '&Settings'
+      object ApplicationSettingsMenuItem: TMenuItem
+        Caption = '&Application Settings...'
+        OnClick = ApplicationSettingsMenuItemClick
       end
     end
     object HelpMenuItem: TMenuItem

@@ -1,0 +1,12 @@
+{
+  "php" : {
+    "studio_php" : "C:\\xampp82\\php\\php.exe",
+    "project_php" : "",
+    "project_php_mode" : "auto"
+  },
+  "composer" : {
+    "composer_path" : "",
+    "runtime_mode" : "project_php",
+    "custom_php" : ""
+  }
+}

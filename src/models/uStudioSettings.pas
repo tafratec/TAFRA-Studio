@@ -1,0 +1,43 @@
+unit uStudioSettings;
+
+{$mode objfpc}{$H+}
+
+interface
+
+type
+  TStudioSettings = class
+  private
+    FStudioPHPPath: string;
+    FProjectPHPPath: string;
+    FProjectPHPMode: string;
+    FComposerPath: string;
+    FComposerRuntimeMode: string;
+    FComposerCustomPHPPath: string;
+  public
+    procedure Assign(ASettings: TStudioSettings);
+    property StudioPHPPath: string read FStudioPHPPath write FStudioPHPPath;
+    property ProjectPHPPath: string read FProjectPHPPath write FProjectPHPPath;
+    property ProjectPHPMode: string read FProjectPHPMode write FProjectPHPMode;
+    property ComposerPath: string read FComposerPath write FComposerPath;
+    property ComposerRuntimeMode: string read FComposerRuntimeMode
+      write FComposerRuntimeMode;
+    property ComposerCustomPHPPath: string read FComposerCustomPHPPath
+      write FComposerCustomPHPPath;
+  end;
+
+implementation
+
+procedure TStudioSettings.Assign(ASettings: TStudioSettings);
+begin
+  if not Assigned(ASettings) then
+    Exit;
+
+  FStudioPHPPath := ASettings.StudioPHPPath;
+  FProjectPHPPath := ASettings.ProjectPHPPath;
+  FProjectPHPMode := ASettings.ProjectPHPMode;
+  FComposerPath := ASettings.ComposerPath;
+  FComposerRuntimeMode := ASettings.ComposerRuntimeMode;
+  FComposerCustomPHPPath := ASettings.ComposerCustomPHPPath;
+end;
+
+end.

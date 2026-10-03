@@ -7,8 +7,9 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Menus, ComCtrls,
   ExtCtrls, StdCtrls, uAppPaths, uLogger, uProcessRunner, uPHPToolRunner,
-  uProjectSession, uProjectScanner, uProjectAnalyzer, uTAFRAFrameworkRules,
-  uProjectExplorerPresenter, uResultTypes, uProjectModel;
+  uSettingsService, uComposerRunner, uProjectSession, uProjectScanner,
+  uProjectAnalyzer, uTAFRAFrameworkRules, uProjectExplorerPresenter,
+  uModuleManagementService, uSettingsForm, uResultTypes, uProjectModel;
 
 type
 
@@ -27,12 +28,15 @@ type
     OutputMenuItem: TMenuItem;
     OutputPanel: TPanel;
     OutputSplitter: TSplitter;
+    ProjectMenuItem: TMenuItem;
     ProjectExplorerMenuItem: TMenuItem;
     ProjectExplorerPanel: TPanel;
     ProjectTreeView: TTreeView;
     RecentProjectsMenuItem: TMenuItem;
     SelectDirectoryDialog: TSelectDirectoryDialog;
     SeparatorMenuItem: TMenuItem;
+    SettingsMenuItem: TMenuItem;
+    ApplicationSettingsMenuItem: TMenuItem;
     StatusBar: TStatusBar;
     ToolBar: TToolBar;
     ViewMenuItem: TMenuItem;
@@ -43,34 +47,71 @@ type
     procedure ExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure ApplicationSettingsMenuItemClick(Sender: TObject);
     procedure OpenProjectMenuItemClick(Sender: TObject);
     procedure OutputMenuItemClick(Sender: TObject);
     procedure ProjectExplorerMenuItemClick(Sender: TObject);
+    procedure ProjectTreePopupMenuPopup(Sender: TObject);
     procedure ProjectTreeViewChange(Sender: TObject; Node: TTreeNode);
+    procedure ProjectTreeViewMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
   private
     FAppPaths: TAppPaths;
     FLogger: TLogger;
     FProcessRunner: TProcessRunner;
+    FSettingsService: TSettingsService;
+    FComposerRunner: TComposerRunner;
     FPHPToolRunner: TPHPToolRunner;
     FFrameworkRules: TTAFRAFrameworkRules;
     FProjectScanner: TProjectScanner;
     FProjectAnalyzer: TProjectAnalyzer;
+    FModuleManagementService: TModuleManagementService;
     FProjectSession: TProjectSession;
     FProjectExplorerPresenter: TProjectExplorerPresenter;
     FScanProjectMenuItem: TMenuItem;
+    FModulesManagementMenuItem: TMenuItem;
+    FProjectTreePopupMenu: TPopupMenu;
+    FCreateModuleMenuItem: TMenuItem;
+    FCreateSubmoduleMenuItem: TMenuItem;
+    FEditModulePropertiesMenuItem: TMenuItem;
+    FEditSubmodulePropertiesMenuItem: TMenuItem;
+    FReorderSubmodulesMenuItem: TMenuItem;
+    FDeleteSubmoduleMenuItem: TMenuItem;
+    FDeleteModuleMenuItem: TMenuItem;
+    FCheckModuleNamingMenuItem: TMenuItem;
+    FCheckSubmoduleNamingMenuItem: TMenuItem;
+    FPopupCreateModuleMenuItem: TMenuItem;
+    FPopupCreateSubmoduleMenuItem: TMenuItem;
+    FPopupEditModulePropertiesMenuItem: TMenuItem;
+    FPopupEditSubmodulePropertiesMenuItem: TMenuItem;
+    FPopupReorderSubmodulesMenuItem: TMenuItem;
+    FPopupDeleteSubmoduleMenuItem: TMenuItem;
+    FPopupDeleteModuleMenuItem: TMenuItem;
+    FPopupCheckModuleNamingMenuItem: TMenuItem;
+    FPopupCheckSubmoduleNamingMenuItem: TMenuItem;
     FAnalyzerPages: TPageControl;
     FSummaryMemo: TMemo;
     FFilesMemo: TMemo;
     FDiagnosticsMemo: TMemo;
+    function AddModuleManagementMenuItem(AOwnerMenu: TMenuItem;
+      AAction: TModuleManagementAction): TMenuItem;
+    function AddModuleManagementPopupItem(AAction: TModuleManagementAction
+      ): TMenuItem;
     procedure AnalyzeCurrentProject;
     procedure CreateAnalyzerMenu;
     procedure CreateAnalyzerView;
+    procedure CreateModuleManagementMenus;
+    function CurrentModuleManagementContext: TModuleManagementContext;
+    function CurrentProjectExplorerNodeInfo: TProjectExplorerNodeInfo;
     procedure HandleLog(Sender: TObject; ALevel: TLogLevel;
       const AMessage: string);
+    procedure ModuleManagementMenuItemClick(Sender: TObject);
     procedure LogProjectIssues(AProject: TTAFRAProject);
     procedure LoadApplicationIcon;
     function LogoIconPath: string;
     function LogoPngPath: string;
+    function IsDestructiveModuleManagementAction(
+      AAction: TModuleManagementAction): Boolean;
     function FileBelongsToSelectedNode(AProjectFile: TTAFRAProjectFile;
       ANodeInfo: TProjectExplorerNodeInfo): Boolean;
     function FilePathMatchesSelectedNode(AProjectFile: TTAFRAProjectFile;
@@ -78,12 +119,18 @@ type
     function FilePathBelongsToNode(AProjectFile: TTAFRAProjectFile;
       ANodeInfo: TProjectExplorerNodeInfo): Boolean;
     function NormalizeAnalyzerPath(const APath: string): string;
+    function PrepareModuleManagementContext(AAction: TModuleManagementAction;
+      var AContext: TModuleManagementContext): Boolean;
+    procedure ReloadCurrentProject;
     procedure RefreshProjectExplorer;
     procedure RefreshAnalyzerView;
     procedure RefreshAnalyzerFiles;
     procedure RunPHPHealthCheck;
     procedure ScanProjectMenuItemClick(Sender: TObject);
+    procedure SetModuleManagementActionEnabled(AAction: TModuleManagementAction;
+      AEnabled: Boolean);
     procedure UpdateProjectState;
+    procedure UpdateModuleManagementActions;
   public
     function CurrentProjectPath: string;
   end;
@@ -96,19 +143,34 @@ implementation
 {$R *.lfm}
 
 procedure TMainForm.FormCreate(Sender: TObject);
+var
+  ResultInfo: TOperationResult;
 begin
   FAppPaths := TAppPaths.Create;
   FLogger := TLogger.Create;
   FLogger.OnLog := @HandleLog;
   LoadApplicationIcon;
   FProcessRunner := TProcessRunner.Create;
-  FPHPToolRunner := TPHPToolRunner.Create(FAppPaths, FProcessRunner);
+  FSettingsService := TSettingsService.Create(FAppPaths, FProcessRunner);
+  ResultInfo := FSettingsService.Load;
+  try
+    if not ResultInfo.Success then
+      FLogger.Warning('Settings unavailable: ' + ResultInfo.MessageText);
+  finally
+    ResultInfo.Free;
+  end;
+  FComposerRunner := TComposerRunner.Create(FProcessRunner, FSettingsService);
+  FPHPToolRunner := TPHPToolRunner.Create(FAppPaths, FProcessRunner,
+    FSettingsService);
   FFrameworkRules := TTAFRAFrameworkRules.Create;
   FProjectScanner := TProjectScanner.Create(FFrameworkRules);
   FProjectAnalyzer := TProjectAnalyzer.Create;
+  FModuleManagementService := TModuleManagementService.Create(FAppPaths,
+    FPHPToolRunner);
   FProjectSession := TProjectSession.Create(FProjectScanner);
   FProjectExplorerPresenter := TProjectExplorerPresenter.Create;
   CreateAnalyzerMenu;
+  CreateModuleManagementMenus;
   CreateAnalyzerView;
 
   UpdateProjectState;
@@ -122,13 +184,32 @@ begin
   FProjectExplorerPresenter.Render(ProjectTreeView, nil);
   FProjectExplorerPresenter.Free;
   FProjectSession.Free;
+  FModuleManagementService.Free;
   FProjectAnalyzer.Free;
   FProjectScanner.Free;
   FFrameworkRules.Free;
   FPHPToolRunner.Free;
+  FComposerRunner.Free;
+  FSettingsService.Free;
   FProcessRunner.Free;
   FLogger.Free;
   FAppPaths.Free;
+end;
+
+procedure TMainForm.ApplicationSettingsMenuItemClick(Sender: TObject);
+var
+  SettingsForm: TSettingsForm;
+begin
+  SettingsForm := TSettingsForm.Create(Self, FSettingsService, FComposerRunner);
+  try
+    if SettingsForm.ShowModal = mrOK then
+    begin
+      FLogger.Info('Application settings saved.');
+      RunPHPHealthCheck;
+    end;
+  finally
+    SettingsForm.Free;
+  end;
 end;
 
 procedure TMainForm.OpenProjectMenuItemClick(Sender: TObject);
@@ -182,9 +263,28 @@ begin
   ExplorerSplitter.Visible := ProjectExplorerMenuItem.Checked;
 end;
 
+procedure TMainForm.ProjectTreePopupMenuPopup(Sender: TObject);
+begin
+  UpdateModuleManagementActions;
+end;
+
 procedure TMainForm.ProjectTreeViewChange(Sender: TObject; Node: TTreeNode);
 begin
   RefreshAnalyzerFiles;
+  UpdateModuleManagementActions;
+end;
+
+procedure TMainForm.ProjectTreeViewMouseDown(Sender: TObject;
+  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  Node: TTreeNode;
+begin
+  if Button <> mbRight then
+    Exit;
+
+  Node := ProjectTreeView.GetNodeAt(X, Y);
+  if Assigned(Node) then
+    ProjectTreeView.Selected := Node;
 end;
 
 procedure TMainForm.OutputMenuItemClick(Sender: TObject);
@@ -267,6 +367,26 @@ begin
     ' relevant files, ' + IntToStr(Project.Modules.Count) + ' modules.');
 end;
 
+function TMainForm.AddModuleManagementMenuItem(AOwnerMenu: TMenuItem;
+  AAction: TModuleManagementAction): TMenuItem;
+begin
+  Result := TMenuItem.Create(MainMenu);
+  Result.Caption := FModuleManagementService.ActionCaption(AAction);
+  Result.Tag := Ord(AAction);
+  Result.OnClick := @ModuleManagementMenuItemClick;
+  AOwnerMenu.Add(Result);
+end;
+
+function TMainForm.AddModuleManagementPopupItem(AAction: TModuleManagementAction
+  ): TMenuItem;
+begin
+  Result := TMenuItem.Create(FProjectTreePopupMenu);
+  Result.Caption := FModuleManagementService.ActionCaption(AAction);
+  Result.Tag := Ord(AAction);
+  Result.OnClick := @ModuleManagementMenuItemClick;
+  FProjectTreePopupMenu.Items.Add(Result);
+end;
+
 procedure TMainForm.CreateAnalyzerMenu;
 begin
   FScanProjectMenuItem := TMenuItem.Create(MainMenu);
@@ -274,6 +394,79 @@ begin
   FScanProjectMenuItem.Enabled := False;
   FScanProjectMenuItem.OnClick := @ScanProjectMenuItemClick;
   FileMenuItem.Insert(2, FScanProjectMenuItem);
+end;
+
+procedure TMainForm.CreateModuleManagementMenus;
+begin
+  FModulesManagementMenuItem := TMenuItem.Create(MainMenu);
+  FModulesManagementMenuItem.Caption := '&Modules Management';
+  FModulesManagementMenuItem.Enabled := False;
+  ProjectMenuItem.Add(FModulesManagementMenuItem);
+
+  FCreateModuleMenuItem := AddModuleManagementMenuItem(FModulesManagementMenuItem,
+    mmaCreateModule);
+  FCreateSubmoduleMenuItem := AddModuleManagementMenuItem(FModulesManagementMenuItem,
+    mmaCreateSubmodule);
+  FEditModulePropertiesMenuItem := AddModuleManagementMenuItem(FModulesManagementMenuItem,
+    mmaEditModuleProperties);
+  FEditSubmodulePropertiesMenuItem := AddModuleManagementMenuItem(FModulesManagementMenuItem,
+    mmaEditSubmoduleProperties);
+  FReorderSubmodulesMenuItem := AddModuleManagementMenuItem(FModulesManagementMenuItem,
+    mmaReorderSubmodules);
+  FDeleteSubmoduleMenuItem := AddModuleManagementMenuItem(FModulesManagementMenuItem,
+    mmaDeleteSubmodule);
+  FDeleteModuleMenuItem := AddModuleManagementMenuItem(FModulesManagementMenuItem,
+    mmaDeleteModule);
+  FCheckModuleNamingMenuItem := AddModuleManagementMenuItem(FModulesManagementMenuItem,
+    mmaCheckModuleNaming);
+  FCheckSubmoduleNamingMenuItem := AddModuleManagementMenuItem(FModulesManagementMenuItem,
+    mmaCheckSubmoduleNaming);
+
+  FProjectTreePopupMenu := TPopupMenu.Create(Self);
+  FProjectTreePopupMenu.OnPopup := @ProjectTreePopupMenuPopup;
+  ProjectTreeView.PopupMenu := FProjectTreePopupMenu;
+
+  FPopupCreateModuleMenuItem := AddModuleManagementPopupItem(mmaCreateModule);
+  FPopupCreateSubmoduleMenuItem := AddModuleManagementPopupItem(mmaCreateSubmodule);
+  FPopupEditModulePropertiesMenuItem :=
+    AddModuleManagementPopupItem(mmaEditModuleProperties);
+  FPopupEditSubmodulePropertiesMenuItem :=
+    AddModuleManagementPopupItem(mmaEditSubmoduleProperties);
+  FPopupReorderSubmodulesMenuItem :=
+    AddModuleManagementPopupItem(mmaReorderSubmodules);
+  FPopupDeleteSubmoduleMenuItem := AddModuleManagementPopupItem(mmaDeleteSubmodule);
+  FPopupDeleteModuleMenuItem := AddModuleManagementPopupItem(mmaDeleteModule);
+  FPopupCheckModuleNamingMenuItem := AddModuleManagementPopupItem(mmaCheckModuleNaming);
+  FPopupCheckSubmoduleNamingMenuItem :=
+    AddModuleManagementPopupItem(mmaCheckSubmoduleNaming);
+
+  UpdateModuleManagementActions;
+end;
+
+function TMainForm.CurrentModuleManagementContext: TModuleManagementContext;
+var
+  NodeInfo: TProjectExplorerNodeInfo;
+begin
+  Result.Project := nil;
+  Result.ModuleName := '';
+  Result.SubmoduleName := '';
+  Result.NodePath := '';
+  Result.Project := FProjectSession.CurrentProject;
+
+  NodeInfo := CurrentProjectExplorerNodeInfo;
+  if Assigned(NodeInfo) then
+  begin
+    Result.ModuleName := NodeInfo.ModuleName;
+    Result.SubmoduleName := NodeInfo.SubmoduleName;
+    Result.NodePath := NodeInfo.Path;
+  end;
+end;
+
+function TMainForm.CurrentProjectExplorerNodeInfo: TProjectExplorerNodeInfo;
+begin
+  Result := nil;
+  if Assigned(ProjectTreeView.Selected) then
+    Result := TProjectExplorerNodeInfo(ProjectTreeView.Selected.Data);
 end;
 
 procedure TMainForm.CreateAnalyzerView;
@@ -329,6 +522,48 @@ begin
     LogLevelToText(ALevel) + '] ' + AMessage);
 end;
 
+procedure TMainForm.ModuleManagementMenuItemClick(Sender: TObject);
+var
+  MgmtAction: TModuleManagementAction;
+  Context: TModuleManagementContext;
+  Preview: string;
+  ResultInfo: TOperationResult;
+begin
+  if not (Sender is TMenuItem) then
+    Exit;
+
+  MgmtAction := TModuleManagementAction(TMenuItem(Sender).Tag);
+  Context := CurrentModuleManagementContext;
+
+  if not PrepareModuleManagementContext(MgmtAction, Context) then
+    Exit;
+
+  Preview := FModuleManagementService.BuildPreview(MgmtAction, Context);
+
+  if IsDestructiveModuleManagementAction(MgmtAction) then
+  begin
+    if MessageDlg('Modules Management', Preview, mtWarning, [mbYes, mbNo],
+      0) <> mrYes then
+      Exit;
+  end
+  else if MessageDlg('Modules Management', Preview, mtInformation,
+    [mbOK, mbCancel], 0) <> mrOK then
+    Exit;
+
+  ResultInfo := FModuleManagementService.Execute(MgmtAction, Context);
+  try
+    if ResultInfo.Success then
+    begin
+      FLogger.Info(ResultInfo.MessageText);
+      ReloadCurrentProject;
+    end
+    else
+      FLogger.Warning(ResultInfo.MessageText);
+  finally
+    ResultInfo.Free;
+  end;
+end;
+
 procedure TMainForm.LogProjectIssues(AProject: TTAFRAProject);
 var
   I: Integer;
@@ -364,6 +599,12 @@ end;
 function TMainForm.LogoPngPath: string;
 begin
   Result := FAppPaths.ApplicationRoot + 'tafraLogo.png';
+end;
+
+function TMainForm.IsDestructiveModuleManagementAction(
+  AAction: TModuleManagementAction): Boolean;
+begin
+  Result := AAction in [mmaDeleteSubmodule, mmaDeleteModule];
 end;
 
 function TMainForm.FileBelongsToSelectedNode(AProjectFile: TTAFRAProjectFile;
@@ -482,6 +723,96 @@ function TMainForm.NormalizeAnalyzerPath(const APath: string): string;
 begin
   Result := LowerCase(StringReplace(ExcludeTrailingPathDelimiter(APath), '/',
     '\', [rfReplaceAll]));
+end;
+
+function TMainForm.PrepareModuleManagementContext(
+  AAction: TModuleManagementAction; var AContext: TModuleManagementContext
+  ): Boolean;
+var
+  Value: string;
+begin
+  Result := False;
+
+  if not Assigned(AContext.Project) then
+  begin
+    FLogger.Warning('Open a TAFRA project before using Modules Management.');
+    Exit;
+  end;
+
+  case AAction of
+    mmaCreateModule:
+      begin
+        Value := '';
+        if not InputQuery('Create Module', 'Module name:', Value) then
+          Exit;
+
+        AContext.ModuleName := Trim(Value);
+        if AContext.ModuleName = '' then
+        begin
+          FLogger.Warning('Module name is required.');
+          Exit;
+        end;
+      end;
+    mmaCreateSubmodule:
+      begin
+        if AContext.ModuleName = '' then
+        begin
+          FLogger.Warning('Select a module before creating a submodule.');
+          Exit;
+        end;
+
+        Value := '';
+        if not InputQuery('Create Submodule', 'Submodule name:', Value) then
+          Exit;
+
+        AContext.SubmoduleName := Trim(Value);
+        if AContext.SubmoduleName = '' then
+        begin
+          FLogger.Warning('Submodule name is required.');
+          Exit;
+        end;
+      end;
+    mmaEditModuleProperties, mmaReorderSubmodules, mmaDeleteModule,
+    mmaCheckModuleNaming:
+      if AContext.ModuleName = '' then
+      begin
+        FLogger.Warning('Select a module for this Modules Management action.');
+        Exit;
+      end;
+    mmaEditSubmoduleProperties, mmaDeleteSubmodule, mmaCheckSubmoduleNaming:
+      if (AContext.ModuleName = '') or (AContext.SubmoduleName = '') then
+      begin
+        FLogger.Warning('Select a submodule for this Modules Management action.');
+        Exit;
+      end;
+  end;
+
+  Result := True;
+end;
+
+procedure TMainForm.ReloadCurrentProject;
+var
+  ProjectPath: string;
+  ResultInfo: TOperationResult;
+begin
+  ProjectPath := CurrentProjectPath;
+  if ProjectPath = '' then
+    Exit;
+
+  ResultInfo := FProjectSession.OpenProject(ProjectPath);
+  try
+    if ResultInfo.Success then
+    begin
+      AnalyzeCurrentProject;
+      RefreshProjectExplorer;
+      RefreshAnalyzerView;
+      UpdateProjectState;
+    end
+    else
+      FLogger.Warning(ResultInfo.MessageText);
+  finally
+    ResultInfo.Free;
+  end;
 end;
 
 procedure TMainForm.RefreshProjectExplorer;
@@ -612,9 +943,64 @@ begin
   RefreshProjectExplorer;
 end;
 
+procedure TMainForm.SetModuleManagementActionEnabled(
+  AAction: TModuleManagementAction; AEnabled: Boolean);
+begin
+  case AAction of
+    mmaCreateModule:
+      begin
+        FCreateModuleMenuItem.Enabled := AEnabled;
+        FPopupCreateModuleMenuItem.Enabled := AEnabled;
+      end;
+    mmaCreateSubmodule:
+      begin
+        FCreateSubmoduleMenuItem.Enabled := AEnabled;
+        FPopupCreateSubmoduleMenuItem.Enabled := AEnabled;
+      end;
+    mmaEditModuleProperties:
+      begin
+        FEditModulePropertiesMenuItem.Enabled := AEnabled;
+        FPopupEditModulePropertiesMenuItem.Enabled := AEnabled;
+      end;
+    mmaEditSubmoduleProperties:
+      begin
+        FEditSubmodulePropertiesMenuItem.Enabled := AEnabled;
+        FPopupEditSubmodulePropertiesMenuItem.Enabled := AEnabled;
+      end;
+    mmaReorderSubmodules:
+      begin
+        FReorderSubmodulesMenuItem.Enabled := AEnabled;
+        FPopupReorderSubmodulesMenuItem.Enabled := AEnabled;
+      end;
+    mmaDeleteSubmodule:
+      begin
+        FDeleteSubmoduleMenuItem.Enabled := AEnabled;
+        FPopupDeleteSubmoduleMenuItem.Enabled := AEnabled;
+      end;
+    mmaDeleteModule:
+      begin
+        FDeleteModuleMenuItem.Enabled := AEnabled;
+        FPopupDeleteModuleMenuItem.Enabled := AEnabled;
+      end;
+    mmaCheckModuleNaming:
+      begin
+        FCheckModuleNamingMenuItem.Enabled := AEnabled;
+        FPopupCheckModuleNamingMenuItem.Enabled := AEnabled;
+      end;
+    mmaCheckSubmoduleNaming:
+      begin
+        FCheckSubmoduleNamingMenuItem.Enabled := AEnabled;
+        FPopupCheckSubmoduleNamingMenuItem.Enabled := AEnabled;
+      end;
+  end;
+end;
+
 procedure TMainForm.UpdateProjectState;
 begin
   CloseProjectMenuItem.Enabled := CurrentProjectPath <> '';
+  ProjectMenuItem.Enabled := CurrentProjectPath <> '';
+  if Assigned(FModulesManagementMenuItem) then
+    FModulesManagementMenuItem.Enabled := CurrentProjectPath <> '';
   if Assigned(FScanProjectMenuItem) then
     FScanProjectMenuItem.Enabled := CurrentProjectPath <> '';
 
@@ -622,6 +1008,36 @@ begin
     StatusBar.SimpleText := 'No project open'
   else
     StatusBar.SimpleText := 'Project: ' + CurrentProjectPath;
+
+  UpdateModuleManagementActions;
+end;
+
+procedure TMainForm.UpdateModuleManagementActions;
+var
+  NodeInfo: TProjectExplorerNodeInfo;
+  ProjectOpen: Boolean;
+  IsModuleNode: Boolean;
+  IsSubmoduleNode: Boolean;
+begin
+  if not Assigned(FCreateModuleMenuItem) then
+    Exit;
+
+  ProjectOpen := CurrentProjectPath <> '';
+  NodeInfo := CurrentProjectExplorerNodeInfo;
+  IsModuleNode := ProjectOpen and Assigned(NodeInfo) and
+    (NodeInfo.Kind = penModule);
+  IsSubmoduleNode := ProjectOpen and Assigned(NodeInfo) and
+    (NodeInfo.Kind = penSubmodule);
+
+  SetModuleManagementActionEnabled(mmaCreateModule, ProjectOpen);
+  SetModuleManagementActionEnabled(mmaCreateSubmodule, IsModuleNode);
+  SetModuleManagementActionEnabled(mmaEditModuleProperties, IsModuleNode);
+  SetModuleManagementActionEnabled(mmaEditSubmoduleProperties, IsSubmoduleNode);
+  SetModuleManagementActionEnabled(mmaReorderSubmodules, IsModuleNode);
+  SetModuleManagementActionEnabled(mmaDeleteSubmodule, IsSubmoduleNode);
+  SetModuleManagementActionEnabled(mmaDeleteModule, IsModuleNode);
+  SetModuleManagementActionEnabled(mmaCheckModuleNaming, IsModuleNode);
+  SetModuleManagementActionEnabled(mmaCheckSubmoduleNaming, IsSubmoduleNode);
 end;
 
 function TMainForm.CurrentProjectPath: string;

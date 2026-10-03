@@ -22,6 +22,8 @@ Start with:
 - `docs/manual/04- php-tooling.md`
 - `docs/manual/05- project-understanding.md`
 - `docs/manual/06- project-analyzer.md`
+- `docs/manual/07- modules-management.md`
+- `docs/manual/08- application-settings.md`
 
 ## Build and Run
 

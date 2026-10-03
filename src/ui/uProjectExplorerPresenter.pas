@@ -45,8 +45,10 @@ type
     function AddNode(ATree: TTreeView; AParent: TTreeNode;
       const ACaption: string; AInfo: TProjectExplorerNodeInfo): TTreeNode;
     procedure ClearNodeData(ATree: TTreeView);
+    function FindSubmoduleByPath(AModule: TTAFRAModule;
+      const APath: string): TTAFRASubmodule;
     procedure RenderFileTree(ATree: TTreeView; AParent: TTreeNode;
-      ANode: TTAFRAFileSystemNode; const AModuleName: string;
+      ANode: TTAFRAFileSystemNode; AModule: TTAFRAModule;
       const ASubmoduleName: string);
   public
     procedure Render(ATree: TTreeView; AProject: TTAFRAProject);
@@ -92,25 +94,69 @@ begin
   end;
 end;
 
+function TProjectExplorerPresenter.FindSubmoduleByPath(AModule: TTAFRAModule;
+  const APath: string): TTAFRASubmodule;
+var
+  I: Integer;
+  Submodule: TTAFRASubmodule;
+begin
+  Result := nil;
+  if not Assigned(AModule) then
+    Exit;
+
+  for I := 0 to AModule.Submodules.Count - 1 do
+  begin
+    Submodule := TTAFRASubmodule(AModule.Submodules[I]);
+    if SameText(ExcludeTrailingPathDelimiter(Submodule.Path),
+      ExcludeTrailingPathDelimiter(APath)) then
+    begin
+      Result := Submodule;
+      Exit;
+    end;
+  end;
+end;
+
 procedure TProjectExplorerPresenter.RenderFileTree(ATree: TTreeView;
-  AParent: TTreeNode; ANode: TTAFRAFileSystemNode; const AModuleName: string;
+  AParent: TTreeNode; ANode: TTAFRAFileSystemNode; AModule: TTAFRAModule;
   const ASubmoduleName: string);
 var
   Node: TTreeNode;
   I: Integer;
   ChildNode: TTAFRAFileSystemNode;
+  NodeKind: TProjectExplorerNodeKind;
+  ModuleName: string;
+  SubmoduleName: string;
+  Submodule: TTAFRASubmodule;
 begin
   if not Assigned(ANode) then
     Exit;
 
+  ModuleName := '';
+  if Assigned(AModule) then
+    ModuleName := AModule.Name;
+
+  SubmoduleName := ASubmoduleName;
   if ANode.IsDirectory then
+  begin
+    NodeKind := penFolder;
+    if (SubmoduleName = '') and SameText(ANode.Name, 'submodules') then
+      NodeKind := penSubmodules;
+
+    Submodule := FindSubmoduleByPath(AModule, ANode.Path);
+    if Assigned(Submodule) then
+    begin
+      NodeKind := penSubmodule;
+      SubmoduleName := Submodule.Name;
+    end;
+
     Node := AddNode(ATree, AParent, ANode.Name,
-      TProjectExplorerNodeInfo.Create(penFolder, AModuleName, ASubmoduleName,
+      TProjectExplorerNodeInfo.Create(NodeKind, ModuleName, SubmoduleName,
       ANode.Name, '', ANode.Path))
+  end
   else
   begin
     AddNode(ATree, AParent, ANode.Name,
-      TProjectExplorerNodeInfo.Create(penFile, AModuleName, ASubmoduleName,
+      TProjectExplorerNodeInfo.Create(penFile, ModuleName, SubmoduleName,
       '', ANode.Name, ANode.Path));
     Exit;
   end;
@@ -118,7 +164,7 @@ begin
   for I := 0 to ANode.Children.Count - 1 do
   begin
     ChildNode := TTAFRAFileSystemNode(ANode.Children[I]);
-    RenderFileTree(ATree, Node, ChildNode, AModuleName, ASubmoduleName);
+    RenderFileTree(ATree, Node, ChildNode, AModule, SubmoduleName);
   end;
 end;
 
@@ -152,7 +198,7 @@ begin
 
       for K := 0 to Module.FileTree.Children.Count - 1 do
         RenderFileTree(ATree, ModuleNode,
-          TTAFRAFileSystemNode(Module.FileTree.Children[K]), Module.Name, '');
+          TTAFRAFileSystemNode(Module.FileTree.Children[K]), Module, '');
     end;
 
     if AProject.Issues.Count > 0 then
