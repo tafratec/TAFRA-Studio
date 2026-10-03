@@ -11,6 +11,28 @@ Settings
 
 ## PHP Runtime Settings
 
+## Appearance Settings
+
+Application Settings includes an application theme selector.
+
+Built-in themes:
+
+- Light
+- Dark
+
+The selected theme is saved as the theme name in:
+
+```json
+"appearance": {
+  "theme": "dark"
+}
+```
+
+Themes are registered in the theme service, so more themes can be added later
+without rewriting form-specific color logic.
+
+## PHP Runtime Settings
+
 TAFRA Studio keeps two PHP runtime concepts separate:
 
 - Studio PHP executable

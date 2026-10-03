@@ -12,5 +12,8 @@
   "source_viewer" : {
     "font_name" : "Courier New",
     "font_size" : 10
+  },
+  "appearance" : {
+    "theme" : "dark"
   }
 }

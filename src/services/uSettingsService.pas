@@ -85,6 +85,9 @@ begin
 
   if ASettings.SourceFontSize <= 0 then
     ASettings.SourceFontSize := 10;
+
+  if ASettings.ThemeName = '' then
+    ASettings.ThemeName := 'dark';
 end;
 
 function TSettingsService.Load: TOperationResult;
@@ -94,6 +97,7 @@ var
   PHPObj: TJSONObject;
   ComposerObj: TJSONObject;
   SourceViewerObj: TJSONObject;
+  AppearanceObj: TJSONObject;
   Node: TJSONData;
   Path: string;
   FileText: TStringList;
@@ -146,6 +150,13 @@ begin
             FSettings.SourceFontSize);
         end;
 
+        Node := Root.Find('appearance');
+        if Assigned(Node) and (Node is TJSONObject) then
+        begin
+          AppearanceObj := TJSONObject(Node);
+          FSettings.ThemeName := AppearanceObj.Get('theme', FSettings.ThemeName);
+        end;
+
         ApplyDefaults(FSettings);
         Result := TOperationResult.Ok('Settings loaded.');
       finally
@@ -166,6 +177,7 @@ var
   PHPObj: TJSONObject;
   ComposerObj: TJSONObject;
   SourceViewerObj: TJSONObject;
+  AppearanceObj: TJSONObject;
   Text: string;
   FileText: TStringList;
 begin
@@ -195,6 +207,10 @@ begin
       SourceViewerObj.Add('font_name', ASettings.SourceFontName);
       SourceViewerObj.Add('font_size', ASettings.SourceFontSize);
       Root.Add('source_viewer', SourceViewerObj);
+
+      AppearanceObj := TJSONObject.Create;
+      AppearanceObj.Add('theme', ASettings.ThemeName);
+      Root.Add('appearance', AppearanceObj);
 
       Text := Root.FormatJSON;
 

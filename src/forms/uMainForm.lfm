@@ -76,16 +76,46 @@ object MainForm: TMainForm
       Align = alLeft
       Caption = 'Project Explorer'
       TabOrder = 1
+      object ProjectExplorerActionsPanel: TPanel
+        Left = 1
+        Height = 30
+        Top = 19
+        Width = 248
+        Align = alTop
+        BevelOuter = bvNone
+        Caption = ''
+        TabOrder = 0
+        object ExpandAllProjectButton: TButton
+          Left = 4
+          Height = 24
+          Top = 3
+          Width = 86
+          Caption = 'Expand All'
+          OnClick = ExpandAllProjectButtonClick
+          TabOrder = 0
+        end
+        object CollapseAllProjectButton: TButton
+          Left = 94
+          Height = 24
+          Top = 3
+          Width = 88
+          Caption = 'Collapse All'
+          OnClick = CollapseAllProjectButtonClick
+          TabOrder = 1
+        end
+      end
       object ProjectTreeView: TTreeView
         Left = 1
-        Height = 472
-        Top = 19
+        Height = 442
+        Top = 49
         Width = 248
         Align = alClient
         HideSelection = False
         OnChange = ProjectTreeViewChange
+        OnCustomDraw = ProjectTreeViewCustomDraw
+        OnCustomDrawItem = ProjectTreeViewCustomDrawItem
         OnMouseDown = ProjectTreeViewMouseDown
-        TabOrder = 0
+        TabOrder = 1
       end
     end
     object ExplorerSplitter: TSplitter

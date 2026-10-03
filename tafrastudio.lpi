@@ -89,6 +89,11 @@
         <UnitName Value="uSourceFileService"/>
       </Unit>
       <Unit>
+        <Filename Value="src/services/uThemeService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uThemeService"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/models/uProjectModel.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uProjectModel"/>

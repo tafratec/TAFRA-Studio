@@ -15,6 +15,7 @@ type
     FComposerCustomPHPPath: string;
     FSourceFontName: string;
     FSourceFontSize: Integer;
+    FThemeName: string;
   public
     procedure Assign(ASettings: TStudioSettings);
     property StudioPHPPath: string read FStudioPHPPath write FStudioPHPPath;
@@ -27,6 +28,7 @@ type
       write FComposerCustomPHPPath;
     property SourceFontName: string read FSourceFontName write FSourceFontName;
     property SourceFontSize: Integer read FSourceFontSize write FSourceFontSize;
+    property ThemeName: string read FThemeName write FThemeName;
   end;
 
 implementation
@@ -44,6 +46,7 @@ begin
   FComposerCustomPHPPath := ASettings.ComposerCustomPHPPath;
   FSourceFontName := ASettings.SourceFontName;
   FSourceFontSize := ASettings.SourceFontSize;
+  FThemeName := ASettings.ThemeName;
 end;
 
 end.

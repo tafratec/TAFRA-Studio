@@ -10,7 +10,7 @@ uses
   uSettingsService, uComposerRunner, uProjectSession, uProjectScanner,
   uProjectAnalyzer, uTAFRAFrameworkRules, uProjectExplorerPresenter,
   uModuleManagementService, uSettingsForm, uSourceFileService, uResultTypes,
-  uProjectModel, SynEdit, SynHighlighterPHP, SynHighlighterJScript,
+  uProjectModel, uThemeService, SynEdit, SynHighlighterPHP, SynHighlighterJScript,
   SynHighlighterCss, SynHighlighterHtml, SynHighlighterSQL;
 
 type
@@ -19,7 +19,9 @@ type
 
   TMainForm = class(TForm)
     CloseProjectMenuItem: TMenuItem;
+    CollapseAllProjectButton: TButton;
     ContentPanel: TPanel;
+    ExpandAllProjectButton: TButton;
     ExplorerSplitter: TSplitter;
     ExitMenuItem: TMenuItem;
     FileMenuItem: TMenuItem;
@@ -31,6 +33,7 @@ type
     OutputPanel: TPanel;
     OutputSplitter: TSplitter;
     ProjectMenuItem: TMenuItem;
+    ProjectExplorerActionsPanel: TPanel;
     ProjectExplorerMenuItem: TMenuItem;
     ProjectExplorerPanel: TPanel;
     ProjectTreeView: TTreeView;
@@ -46,6 +49,8 @@ type
     AboutMenuItem: TMenuItem;
     procedure AboutMenuItemClick(Sender: TObject);
     procedure CloseProjectMenuItemClick(Sender: TObject);
+    procedure CollapseAllProjectButtonClick(Sender: TObject);
+    procedure ExpandAllProjectButtonClick(Sender: TObject);
     procedure ExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -55,6 +60,10 @@ type
     procedure ProjectExplorerMenuItemClick(Sender: TObject);
     procedure ProjectTreePopupMenuPopup(Sender: TObject);
     procedure ProjectTreeViewChange(Sender: TObject; Node: TTreeNode);
+    procedure ProjectTreeViewCustomDraw(Sender: TCustomTreeView;
+      const ARect: TRect; var DefaultDraw: Boolean);
+    procedure ProjectTreeViewCustomDrawItem(Sender: TCustomTreeView;
+      Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure ProjectTreeViewMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
   private
@@ -62,6 +71,7 @@ type
     FLogger: TLogger;
     FProcessRunner: TProcessRunner;
     FSettingsService: TSettingsService;
+    FThemeService: TThemeService;
     FComposerRunner: TComposerRunner;
     FPHPToolRunner: TPHPToolRunner;
     FFrameworkRules: TTAFRAFrameworkRules;
@@ -122,6 +132,7 @@ type
     procedure LoadApplicationIcon;
     function LogoIconPath: string;
     function LogoPngPath: string;
+    procedure ApplyApplicationTheme;
     procedure ApplySourceViewerSettings;
     function IsDestructiveModuleManagementAction(
       AAction: TModuleManagementAction): Boolean;
@@ -165,6 +176,7 @@ begin
   FLogger.OnLog := @HandleLog;
   LoadApplicationIcon;
   FProcessRunner := TProcessRunner.Create;
+  FThemeService := TThemeService.Create;
   FSettingsService := TSettingsService.Create(FAppPaths, FProcessRunner);
   ResultInfo := FSettingsService.Load;
   try
@@ -187,6 +199,7 @@ begin
   CreateAnalyzerMenu;
   CreateModuleManagementMenus;
   CreateAnalyzerView;
+  ApplyApplicationTheme;
   ApplySourceViewerSettings;
 
   UpdateProjectState;
@@ -207,6 +220,7 @@ begin
   FFrameworkRules.Free;
   FPHPToolRunner.Free;
   FComposerRunner.Free;
+  FThemeService.Free;
   FSettingsService.Free;
   FProcessRunner.Free;
   FLogger.Free;
@@ -217,11 +231,13 @@ procedure TMainForm.ApplicationSettingsMenuItemClick(Sender: TObject);
 var
   SettingsForm: TSettingsForm;
 begin
-  SettingsForm := TSettingsForm.Create(Self, FSettingsService, FComposerRunner);
+  SettingsForm := TSettingsForm.Create(Self, FSettingsService, FComposerRunner,
+    FThemeService);
   try
     if SettingsForm.ShowModal = mrOK then
     begin
       FLogger.Info('Application settings saved.');
+      ApplyApplicationTheme;
       ApplySourceViewerSettings;
       RunPHPHealthCheck;
     end;
@@ -270,6 +286,18 @@ begin
   end;
 end;
 
+procedure TMainForm.CollapseAllProjectButtonClick(Sender: TObject);
+begin
+  ProjectTreeView.FullCollapse;
+  ProjectTreeView.Invalidate;
+end;
+
+procedure TMainForm.ExpandAllProjectButtonClick(Sender: TObject);
+begin
+  ProjectTreeView.FullExpand;
+  ProjectTreeView.Invalidate;
+end;
+
 procedure TMainForm.ExitMenuItemClick(Sender: TObject);
 begin
   Close;
@@ -296,6 +324,131 @@ begin
   NodeInfo := CurrentProjectExplorerNodeInfo;
   if Assigned(NodeInfo) and (NodeInfo.Kind = penFile) then
     OpenSourceFile(NodeInfo.Path);
+end;
+
+procedure TMainForm.ProjectTreeViewCustomDraw(Sender: TCustomTreeView;
+  const ARect: TRect; var DefaultDraw: Boolean);
+var
+  Theme: TStudioTheme;
+begin
+  DefaultDraw := True;
+
+  if (not Assigned(FThemeService)) or (not Assigned(FSettingsService)) or
+    (not SameText(FSettingsService.Settings.ThemeName, 'dark')) then
+    Exit;
+
+  Theme := FThemeService.ResolveTheme(FSettingsService.Settings.ThemeName);
+  if not Assigned(Theme) then
+    Exit;
+
+  Sender.Canvas.Brush.Style := bsSolid;
+  Sender.Canvas.Brush.Color := Theme.ProjectExplorerBackgroundColor;
+  Sender.Canvas.FillRect(ARect);
+  DefaultDraw := True;
+end;
+
+procedure TMainForm.ProjectTreeViewCustomDrawItem(Sender: TCustomTreeView;
+  Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
+var
+  TextRect: TRect;
+  RowRect: TRect;
+  Theme: TStudioTheme;
+  LineX: Integer;
+  StepWidth: Integer;
+  I: Integer;
+  RowMiddle: Integer;
+  GlyphRect: TRect;
+  GlyphSize: Integer;
+  AncestorNode: TTreeNode;
+begin
+  DefaultDraw := True;
+
+  if (not Assigned(FThemeService)) or (not Assigned(FSettingsService)) or
+    (not SameText(FSettingsService.Settings.ThemeName, 'dark')) then
+    Exit;
+
+  Theme := FThemeService.ResolveTheme(FSettingsService.Settings.ThemeName);
+  if not Assigned(Theme) then
+    Exit;
+
+  DefaultDraw := False;
+  TextRect := Node.DisplayRect(True);
+  RowRect := Node.DisplayRect(False);
+  RowRect.Left := 0;
+  RowRect.Right := Sender.ClientWidth;
+
+  Sender.Canvas.Brush.Style := bsSolid;
+  if (cdsSelected in State) or Node.Selected then
+  begin
+    Sender.Canvas.Brush.Color := Theme.ProjectExplorerSelectedBackgroundColor;
+    Sender.Canvas.Font.Color := Theme.ProjectExplorerSelectedTextColor;
+  end
+  else
+  begin
+    Sender.Canvas.Brush.Color := Theme.ProjectExplorerBackgroundColor;
+    Sender.Canvas.Font.Color := Theme.ProjectExplorerTextColor;
+  end;
+
+  Sender.Canvas.FillRect(RowRect);
+  if (cdsSelected in State) or Node.Selected then
+    Sender.Canvas.Pen.Color := Theme.ProjectExplorerSelectedTextColor
+  else
+    Sender.Canvas.Pen.Color := Theme.ProjectExplorerLineColor;
+  Sender.Canvas.Pen.Style := psSolid;
+  Sender.Canvas.Pen.Width := 1;
+
+  StepWidth := 16;
+  if Node.Level > 0 then
+    StepWidth := (TextRect.Left - 8) div (Node.Level + 1);
+  if StepWidth < 12 then
+    StepWidth := 16;
+
+  RowMiddle := (RowRect.Top + RowRect.Bottom) div 2;
+  LineX := TextRect.Left - 8;
+  if LineX < 6 then
+    LineX := 6;
+
+  AncestorNode := Node.Parent;
+  for I := Node.Level - 1 downto 0 do
+  begin
+    if Assigned(AncestorNode) and Assigned(AncestorNode.GetNextSibling) then
+      Sender.Canvas.Line(LineX - ((Node.Level - I) * StepWidth), RowRect.Top,
+        LineX - ((Node.Level - I) * StepWidth), RowRect.Bottom);
+
+    if Assigned(AncestorNode) then
+      AncestorNode := AncestorNode.Parent;
+  end;
+
+  if Assigned(Node.GetPrevSibling) then
+    Sender.Canvas.Line(LineX, RowRect.Top, LineX, RowMiddle);
+
+  if Assigned(Node.GetNextSibling) or
+    (Assigned(Node.GetFirstChild) and Node.Expanded) then
+    Sender.Canvas.Line(LineX, RowMiddle, LineX, RowRect.Bottom);
+
+  Sender.Canvas.Line(LineX, RowMiddle, TextRect.Left - 3, RowMiddle);
+
+  if Assigned(Node.GetFirstChild) then
+  begin
+    GlyphSize := 9;
+    GlyphRect := Rect(LineX - (GlyphSize div 2), RowMiddle - (GlyphSize div 2),
+      LineX + (GlyphSize div 2) + 1, RowMiddle + (GlyphSize div 2) + 1);
+
+    Sender.Canvas.Brush.Style := bsSolid;
+    if (cdsSelected in State) or Node.Selected then
+      Sender.Canvas.Brush.Color := Theme.ProjectExplorerSelectedBackgroundColor
+    else
+      Sender.Canvas.Brush.Color := Theme.ProjectExplorerBackgroundColor;
+
+    Sender.Canvas.Rectangle(GlyphRect);
+    Sender.Canvas.Line(GlyphRect.Left + 2, RowMiddle, GlyphRect.Right - 2,
+      RowMiddle);
+
+    if not Node.Expanded then
+      Sender.Canvas.Line(LineX, GlyphRect.Top + 2, LineX, GlyphRect.Bottom - 2);
+  end;
+
+  Sender.Canvas.TextOut(TextRect.Left + 2, TextRect.Top, Node.Text);
 end;
 
 procedure TMainForm.ProjectTreeViewMouseDown(Sender: TObject;
@@ -687,6 +840,25 @@ begin
   Result := FAppPaths.ApplicationRoot + 'tafraLogo.png';
 end;
 
+procedure TMainForm.ApplyApplicationTheme;
+var
+  Theme: TStudioTheme;
+begin
+  if not Assigned(FThemeService) or not Assigned(FSettingsService) or
+    not Assigned(FSettingsService.Settings) then
+    Exit;
+
+  Theme := FThemeService.ResolveTheme(FSettingsService.Settings.ThemeName);
+  FThemeService.ApplyTheme(Self, Theme.Name);
+
+  if Assigned(FSourceEditor) then
+  begin
+    FSourceEditor.Color := Theme.EditorColor;
+    FSourceEditor.Font.Color := Theme.EditorTextColor;
+    FSourceEditor.Gutter.Color := Theme.PanelColor;
+  end;
+end;
+
 procedure TMainForm.ApplySourceViewerSettings;
 begin
   if not Assigned(FSourceEditor) or not Assigned(FSettingsService) or
@@ -960,6 +1132,7 @@ end;
 procedure TMainForm.RefreshProjectExplorer;
 begin
   FProjectExplorerPresenter.Render(ProjectTreeView, FProjectSession.CurrentProject);
+  ApplyApplicationTheme;
 end;
 
 procedure TMainForm.RefreshAnalyzerView;
@@ -1141,6 +1314,8 @@ procedure TMainForm.UpdateProjectState;
 begin
   CloseProjectMenuItem.Enabled := CurrentProjectPath <> '';
   ProjectMenuItem.Enabled := CurrentProjectPath <> '';
+  ExpandAllProjectButton.Enabled := CurrentProjectPath <> '';
+  CollapseAllProjectButton.Enabled := CurrentProjectPath <> '';
   if Assigned(FModulesManagementMenuItem) then
     FModulesManagementMenuItem.Enabled := CurrentProjectPath <> '';
   if Assigned(FScanProjectMenuItem) then
