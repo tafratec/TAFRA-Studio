@@ -79,6 +79,12 @@ begin
 
   if ASettings.ComposerRuntimeMode = '' then
     ASettings.ComposerRuntimeMode := 'project_php';
+
+  if ASettings.SourceFontName = '' then
+    ASettings.SourceFontName := 'Consolas';
+
+  if ASettings.SourceFontSize <= 0 then
+    ASettings.SourceFontSize := 10;
 end;
 
 function TSettingsService.Load: TOperationResult;
@@ -87,6 +93,7 @@ var
   Root: TJSONObject;
   PHPObj: TJSONObject;
   ComposerObj: TJSONObject;
+  SourceViewerObj: TJSONObject;
   Node: TJSONData;
   Path: string;
   FileText: TStringList;
@@ -129,6 +136,16 @@ begin
           FSettings.ComposerCustomPHPPath := ComposerObj.Get('custom_php', '');
         end;
 
+        Node := Root.Find('source_viewer');
+        if Assigned(Node) and (Node is TJSONObject) then
+        begin
+          SourceViewerObj := TJSONObject(Node);
+          FSettings.SourceFontName := SourceViewerObj.Get('font_name',
+            FSettings.SourceFontName);
+          FSettings.SourceFontSize := SourceViewerObj.Get('font_size',
+            FSettings.SourceFontSize);
+        end;
+
         ApplyDefaults(FSettings);
         Result := TOperationResult.Ok('Settings loaded.');
       finally
@@ -148,6 +165,7 @@ var
   Root: TJSONObject;
   PHPObj: TJSONObject;
   ComposerObj: TJSONObject;
+  SourceViewerObj: TJSONObject;
   Text: string;
   FileText: TStringList;
 begin
@@ -172,6 +190,11 @@ begin
       ComposerObj.Add('runtime_mode', ASettings.ComposerRuntimeMode);
       ComposerObj.Add('custom_php', ASettings.ComposerCustomPHPPath);
       Root.Add('composer', ComposerObj);
+
+      SourceViewerObj := TJSONObject.Create;
+      SourceViewerObj.Add('font_name', ASettings.SourceFontName);
+      SourceViewerObj.Add('font_size', ASettings.SourceFontSize);
+      Root.Add('source_viewer', SourceViewerObj);
 
       Text := Root.FormatJSON;
 

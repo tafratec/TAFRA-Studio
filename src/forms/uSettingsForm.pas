@@ -21,6 +21,9 @@ type
     FComposerPathEdit: TEdit;
     FComposerRuntimeCombo: TComboBox;
     FComposerCustomPHPEdit: TEdit;
+    FSourceFontNameEdit: TEdit;
+    FSourceFontSizeEdit: TEdit;
+    FFontDialog: TFontDialog;
     procedure AddLabel(AParent: TWinControl; const ACaption: string;
       ALeft, ATop: Integer);
     function AddEdit(AParent: TWinControl; const AText: string;
@@ -33,6 +36,7 @@ type
     procedure BrowseProjectPHPClick(Sender: TObject);
     procedure BrowseComposerClick(Sender: TObject);
     procedure BrowseComposerCustomPHPClick(Sender: TObject);
+    procedure ChooseSourceFontClick(Sender: TObject);
     procedure TestStudioPHPClick(Sender: TObject);
     procedure TestProjectPHPClick(Sender: TObject);
     procedure TestComposerClick(Sender: TObject);
@@ -65,10 +69,11 @@ begin
   Position := poOwnerFormCenter;
   BorderStyle := bsDialog;
   Width := 690;
-  Height := 420;
+  Height := 480;
 
   FOpenDialog := TOpenDialog.Create(Self);
   FOpenDialog.Options := [ofFileMustExist, ofPathMustExist, ofEnableSizing];
+  FFontDialog := TFontDialog.Create(Self);
 
   AddLabel(Self, 'Studio PHP executable', 16, 20);
   FStudioPHPEdit := AddEdit(Self, FWorkingSettings.StudioPHPPath, 170, 16, 390);
@@ -97,10 +102,18 @@ begin
     170, 278, 390);
   AddButton(Self, 'Browse...', 568, 278, 90, @BrowseComposerCustomPHPClick);
 
-  SaveButton := AddButton(Self, 'Save', 468, 340, 90, @SaveClick);
+  AddLabel(Self, 'Source viewer font', 16, 322);
+  FSourceFontNameEdit := AddEdit(Self, FWorkingSettings.SourceFontName,
+    170, 318, 280);
+  AddLabel(Self, 'Size', 462, 322);
+  FSourceFontSizeEdit := AddEdit(Self, IntToStr(FWorkingSettings.SourceFontSize),
+    500, 318, 60);
+  AddButton(Self, 'Choose...', 568, 318, 90, @ChooseSourceFontClick);
+
+  SaveButton := AddButton(Self, 'Save', 468, 400, 90, @SaveClick);
   SaveButton.Default := True;
 
-  CancelButton := AddButton(Self, 'Cancel', 568, 340, 90, nil);
+  CancelButton := AddButton(Self, 'Cancel', 568, 400, 90, nil);
   CancelButton.ModalResult := mrCancel;
 end;
 
@@ -195,6 +208,18 @@ begin
     FComposerCustomPHPEdit.Text := FOpenDialog.FileName;
 end;
 
+procedure TSettingsForm.ChooseSourceFontClick(Sender: TObject);
+begin
+  FFontDialog.Font.Name := FSourceFontNameEdit.Text;
+  FFontDialog.Font.Size := StrToIntDef(FSourceFontSizeEdit.Text, 10);
+
+  if FFontDialog.Execute then
+  begin
+    FSourceFontNameEdit.Text := FFontDialog.Font.Name;
+    FSourceFontSizeEdit.Text := IntToStr(FFontDialog.Font.Size);
+  end;
+end;
+
 procedure TSettingsForm.TestStudioPHPClick(Sender: TObject);
 var
   ResultInfo: TOperationResult;
@@ -262,6 +287,8 @@ begin
   ASettings.ComposerPath := Trim(FComposerPathEdit.Text);
   ASettings.ComposerRuntimeMode := FComposerRuntimeCombo.Text;
   ASettings.ComposerCustomPHPPath := Trim(FComposerCustomPHPEdit.Text);
+  ASettings.SourceFontName := Trim(FSourceFontNameEdit.Text);
+  ASettings.SourceFontSize := StrToIntDef(FSourceFontSizeEdit.Text, 10);
 end;
 
 procedure TSettingsForm.ShowResult(const ATitle: string;

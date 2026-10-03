@@ -13,6 +13,8 @@ type
     FComposerPath: string;
     FComposerRuntimeMode: string;
     FComposerCustomPHPPath: string;
+    FSourceFontName: string;
+    FSourceFontSize: Integer;
   public
     procedure Assign(ASettings: TStudioSettings);
     property StudioPHPPath: string read FStudioPHPPath write FStudioPHPPath;
@@ -23,6 +25,8 @@ type
       write FComposerRuntimeMode;
     property ComposerCustomPHPPath: string read FComposerCustomPHPPath
       write FComposerCustomPHPPath;
+    property SourceFontName: string read FSourceFontName write FSourceFontName;
+    property SourceFontSize: Integer read FSourceFontSize write FSourceFontSize;
   end;
 
 implementation
@@ -38,6 +42,8 @@ begin
   FComposerPath := ASettings.ComposerPath;
   FComposerRuntimeMode := ASettings.ComposerRuntimeMode;
   FComposerCustomPHPPath := ASettings.ComposerCustomPHPPath;
+  FSourceFontName := ASettings.SourceFontName;
+  FSourceFontSize := ASettings.SourceFontSize;
 end;
 
 end.

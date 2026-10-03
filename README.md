@@ -24,6 +24,7 @@ Start with:
 - `docs/manual/06- project-analyzer.md`
 - `docs/manual/07- modules-management.md`
 - `docs/manual/08- application-settings.md`
+- `docs/manual/09- source-viewer.md`
 
 ## Build and Run
 

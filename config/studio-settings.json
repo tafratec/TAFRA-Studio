@@ -8,5 +8,9 @@
     "composer_path" : "",
     "runtime_mode" : "project_php",
     "custom_php" : ""
+  },
+  "source_viewer" : {
+    "font_name" : "Courier New",
+    "font_size" : 10
   }
 }

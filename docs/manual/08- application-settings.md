@@ -68,3 +68,13 @@ The Settings dialog provides test actions for:
 
 All process execution remains centralized through service classes. Forms do not
 directly invoke PHP or Composer.
+
+## Source Viewer Settings
+
+Application Settings also controls the read-only Source viewer font:
+
+- font name
+- font size
+
+These settings apply to the SynEdit source viewer used when previewing project
+files from the Project Tree or Analyzer Files tab.

@@ -24,10 +24,14 @@
     <RunParams>
       <FormatVersion Value="2"/>
     </RunParams>
-    <RequiredPackages Count="1">
+    <RequiredPackages Count="2">
       <Item1>
         <PackageName Value="LCL"/>
       </Item1>
+      <Item2>
+        <PackageName Value="SynEdit"/>
+        <MinVersion Major="1" Valid="True"/>
+      </Item2>
     </RequiredPackages>
     <Units>
       <Unit>
@@ -78,6 +82,11 @@
         <Filename Value="src/services/uComposerRunner.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uComposerRunner"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/services/uSourceFileService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uSourceFileService"/>
       </Unit>
       <Unit>
         <Filename Value="src/models/uProjectModel.pas"/>

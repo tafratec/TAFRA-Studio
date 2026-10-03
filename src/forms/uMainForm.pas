@@ -9,7 +9,9 @@ uses
   ExtCtrls, StdCtrls, uAppPaths, uLogger, uProcessRunner, uPHPToolRunner,
   uSettingsService, uComposerRunner, uProjectSession, uProjectScanner,
   uProjectAnalyzer, uTAFRAFrameworkRules, uProjectExplorerPresenter,
-  uModuleManagementService, uSettingsForm, uResultTypes, uProjectModel;
+  uModuleManagementService, uSettingsForm, uSourceFileService, uResultTypes,
+  uProjectModel, SynEdit, SynHighlighterPHP, SynHighlighterJScript,
+  SynHighlighterCss, SynHighlighterHtml, SynHighlighterSQL;
 
 type
 
@@ -66,6 +68,7 @@ type
     FProjectScanner: TProjectScanner;
     FProjectAnalyzer: TProjectAnalyzer;
     FModuleManagementService: TModuleManagementService;
+    FSourceFileService: TSourceFileService;
     FProjectSession: TProjectSession;
     FProjectExplorerPresenter: TProjectExplorerPresenter;
     FScanProjectMenuItem: TMenuItem;
@@ -93,6 +96,14 @@ type
     FSummaryMemo: TMemo;
     FFilesMemo: TMemo;
     FDiagnosticsMemo: TMemo;
+    FSourceTab: TTabSheet;
+    FSourcePathLabel: TLabel;
+    FSourceEditor: TSynEdit;
+    FPHPHighlighter: TSynPHPSyn;
+    FJScriptHighlighter: TSynJScriptSyn;
+    FCssHighlighter: TSynCssSyn;
+    FHtmlHighlighter: TSynHTMLSyn;
+    FSQLHighlighter: TSynSQLSyn;
     function AddModuleManagementMenuItem(AOwnerMenu: TMenuItem;
       AAction: TModuleManagementAction): TMenuItem;
     function AddModuleManagementPopupItem(AAction: TModuleManagementAction
@@ -103,6 +114,7 @@ type
     procedure CreateModuleManagementMenus;
     function CurrentModuleManagementContext: TModuleManagementContext;
     function CurrentProjectExplorerNodeInfo: TProjectExplorerNodeInfo;
+    procedure FilesMemoDblClick(Sender: TObject);
     procedure HandleLog(Sender: TObject; ALevel: TLogLevel;
       const AMessage: string);
     procedure ModuleManagementMenuItemClick(Sender: TObject);
@@ -110,6 +122,7 @@ type
     procedure LoadApplicationIcon;
     function LogoIconPath: string;
     function LogoPngPath: string;
+    procedure ApplySourceViewerSettings;
     function IsDestructiveModuleManagementAction(
       AAction: TModuleManagementAction): Boolean;
     function FileBelongsToSelectedNode(AProjectFile: TTAFRAProjectFile;
@@ -119,6 +132,7 @@ type
     function FilePathBelongsToNode(AProjectFile: TTAFRAProjectFile;
       ANodeInfo: TProjectExplorerNodeInfo): Boolean;
     function NormalizeAnalyzerPath(const APath: string): string;
+    procedure OpenSourceFile(const AFilePath: string);
     function PrepareModuleManagementContext(AAction: TModuleManagementAction;
       var AContext: TModuleManagementContext): Boolean;
     procedure ReloadCurrentProject;
@@ -167,11 +181,13 @@ begin
   FProjectAnalyzer := TProjectAnalyzer.Create;
   FModuleManagementService := TModuleManagementService.Create(FAppPaths,
     FPHPToolRunner);
+  FSourceFileService := TSourceFileService.Create;
   FProjectSession := TProjectSession.Create(FProjectScanner);
   FProjectExplorerPresenter := TProjectExplorerPresenter.Create;
   CreateAnalyzerMenu;
   CreateModuleManagementMenus;
   CreateAnalyzerView;
+  ApplySourceViewerSettings;
 
   UpdateProjectState;
   RefreshAnalyzerView;
@@ -185,6 +201,7 @@ begin
   FProjectExplorerPresenter.Free;
   FProjectSession.Free;
   FModuleManagementService.Free;
+  FSourceFileService.Free;
   FProjectAnalyzer.Free;
   FProjectScanner.Free;
   FFrameworkRules.Free;
@@ -205,6 +222,7 @@ begin
     if SettingsForm.ShowModal = mrOK then
     begin
       FLogger.Info('Application settings saved.');
+      ApplySourceViewerSettings;
       RunPHPHealthCheck;
     end;
   finally
@@ -269,9 +287,15 @@ begin
 end;
 
 procedure TMainForm.ProjectTreeViewChange(Sender: TObject; Node: TTreeNode);
+var
+  NodeInfo: TProjectExplorerNodeInfo;
 begin
   RefreshAnalyzerFiles;
   UpdateModuleManagementActions;
+
+  NodeInfo := CurrentProjectExplorerNodeInfo;
+  if Assigned(NodeInfo) and (NodeInfo.Kind = penFile) then
+    OpenSourceFile(NodeInfo.Path);
 end;
 
 procedure TMainForm.ProjectTreeViewMouseDown(Sender: TObject;
@@ -469,11 +493,40 @@ begin
     Result := TProjectExplorerNodeInfo(ProjectTreeView.Selected.Data);
 end;
 
+procedure TMainForm.FilesMemoDblClick(Sender: TObject);
+var
+  LineIndex: Integer;
+  LineText: string;
+  SeparatorPos: Integer;
+  RelativePath: string;
+  FullPath: string;
+begin
+  if (not Assigned(FFilesMemo)) or (CurrentProjectPath = '') then
+    Exit;
+
+  LineIndex := FFilesMemo.CaretPos.Y;
+  if (LineIndex < 0) or (LineIndex >= FFilesMemo.Lines.Count) then
+    Exit;
+
+  LineText := FFilesMemo.Lines[LineIndex];
+  SeparatorPos := Pos('  ', LineText);
+  if SeparatorPos <= 0 then
+    Exit;
+
+  RelativePath := Trim(Copy(LineText, SeparatorPos + 2, MaxInt));
+  if RelativePath = '' then
+    Exit;
+
+  FullPath := IncludeTrailingPathDelimiter(CurrentProjectPath) + RelativePath;
+  OpenSourceFile(FullPath);
+end;
+
 procedure TMainForm.CreateAnalyzerView;
 var
   SummaryTab: TTabSheet;
   FilesTab: TTabSheet;
   DiagnosticsTab: TTabSheet;
+  SourceHeaderPanel: TPanel;
 begin
   WorkspacePanel.Caption := '';
 
@@ -502,6 +555,7 @@ begin
   FFilesMemo.ReadOnly := True;
   FFilesMemo.ScrollBars := ssAutoBoth;
   FFilesMemo.WordWrap := False;
+  FFilesMemo.OnDblClick := @FilesMemoDblClick;
 
   DiagnosticsTab := TTabSheet.Create(Self);
   DiagnosticsTab.PageControl := FAnalyzerPages;
@@ -513,6 +567,38 @@ begin
   FDiagnosticsMemo.ReadOnly := True;
   FDiagnosticsMemo.ScrollBars := ssAutoBoth;
   FDiagnosticsMemo.WordWrap := False;
+
+  FSourceTab := TTabSheet.Create(Self);
+  FSourceTab.PageControl := FAnalyzerPages;
+  FSourceTab.Caption := 'Source';
+
+  SourceHeaderPanel := TPanel.Create(Self);
+  SourceHeaderPanel.Parent := FSourceTab;
+  SourceHeaderPanel.Align := alTop;
+  SourceHeaderPanel.Height := 28;
+  SourceHeaderPanel.Caption := '';
+  SourceHeaderPanel.BevelOuter := bvNone;
+
+  FSourcePathLabel := TLabel.Create(Self);
+  FSourcePathLabel.Parent := SourceHeaderPanel;
+  FSourcePathLabel.Align := alClient;
+  FSourcePathLabel.Layout := tlCenter;
+  FSourcePathLabel.Caption := 'Select a file from the Project Tree to preview it.';
+
+  FPHPHighlighter := TSynPHPSyn.Create(Self);
+  FJScriptHighlighter := TSynJScriptSyn.Create(Self);
+  FCssHighlighter := TSynCssSyn.Create(Self);
+  FHtmlHighlighter := TSynHTMLSyn.Create(Self);
+  FSQLHighlighter := TSynSQLSyn.Create(Self);
+
+  FSourceEditor := TSynEdit.Create(Self);
+  FSourceEditor.Parent := FSourceTab;
+  FSourceEditor.Align := alClient;
+  FSourceEditor.ReadOnly := True;
+  FSourceEditor.Gutter.Width := 57;
+  FSourceEditor.RightGutter.Width := 0;
+  FSourceEditor.Lines.Text :=
+    'Select a PHP/source file from the Project Tree to preview it here.';
 end;
 
 procedure TMainForm.HandleLog(Sender: TObject; ALevel: TLogLevel;
@@ -599,6 +685,16 @@ end;
 function TMainForm.LogoPngPath: string;
 begin
   Result := FAppPaths.ApplicationRoot + 'tafraLogo.png';
+end;
+
+procedure TMainForm.ApplySourceViewerSettings;
+begin
+  if not Assigned(FSourceEditor) or not Assigned(FSettingsService) or
+    not Assigned(FSettingsService.Settings) then
+    Exit;
+
+  FSourceEditor.Font.Name := FSettingsService.Settings.SourceFontName;
+  FSourceEditor.Font.Size := FSettingsService.Settings.SourceFontSize;
 end;
 
 function TMainForm.IsDestructiveModuleManagementAction(
@@ -723,6 +819,52 @@ function TMainForm.NormalizeAnalyzerPath(const APath: string): string;
 begin
   Result := LowerCase(StringReplace(ExcludeTrailingPathDelimiter(APath), '/',
     '\', [rfReplaceAll]));
+end;
+
+procedure TMainForm.OpenSourceFile(const AFilePath: string);
+var
+  SourceResult: TSourceFileResult;
+  Extension: string;
+begin
+  if not Assigned(FSourceEditor) or not Assigned(FSourceFileService) then
+    Exit;
+
+  SourceResult := FSourceFileService.LoadTextFile(AFilePath);
+  try
+    if not SourceResult.Success then
+    begin
+      FSourcePathLabel.Caption := AFilePath;
+      FSourceEditor.Highlighter := nil;
+      FSourceEditor.Lines.Text := SourceResult.MessageText;
+      FAnalyzerPages.ActivePage := FSourceTab;
+      FLogger.Warning(SourceResult.MessageText);
+      Exit;
+    end;
+
+    Extension := LowerCase(ExtractFileExt(AFilePath));
+
+    if Extension = '.php' then
+      FSourceEditor.Highlighter := FPHPHighlighter
+    else if Extension = '.js' then
+      FSourceEditor.Highlighter := FJScriptHighlighter
+    else if Extension = '.css' then
+      FSourceEditor.Highlighter := FCssHighlighter
+    else if (Extension = '.html') or (Extension = '.htm') then
+      FSourceEditor.Highlighter := FHtmlHighlighter
+    else if Extension = '.sql' then
+      FSourceEditor.Highlighter := FSQLHighlighter
+    else
+      FSourceEditor.Highlighter := nil;
+
+    FSourcePathLabel.Caption := SourceResult.FilePath;
+    FSourceEditor.Lines.Text := SourceResult.Content;
+    FSourceEditor.ReadOnly := True;
+    FSourceEditor.CaretX := 1;
+    FSourceEditor.CaretY := 1;
+    FAnalyzerPages.ActivePage := FSourceTab;
+  finally
+    SourceResult.Free;
+  end;
 end;
 
 function TMainForm.PrepareModuleManagementContext(
