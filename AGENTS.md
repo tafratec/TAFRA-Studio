@@ -1,692 +1,406 @@
-# TAFRA Studio — Codex Development Instructions
+# TAFRA Studio — AGENTS.md
 
-## 1. Project Overview
+## 1. Project Purpose
 
-**TAFRA Studio** is a lightweight desktop development tool dedicated to projects built with the **TAFRA Framework**.
+TAFRA Studio is a lightweight desktop development environment and
+engineering tool specifically designed for projects based on the
+TAFRA Framework.
 
-The Studio is not intended to replace a general-purpose IDE.
+It is NOT intended to replace VS Code, PhpStorm, or another
+general-purpose source-code editor.
 
-Its primary responsibilities are:
+TAFRA Studio provides framework-aware tools for:
 
-- Understand TAFRA project structure.
-- Inspect modules and submodules.
-- Validate TAFRA Framework conventions.
-- Generate TAFRA-compatible project components.
-- Provide project management utilities.
-- Prepare structured project context and development instructions for Codex.
-- Eventually act as a specialized development assistant for TAFRA ERP, OTA, and other TAFRA-based applications.
+- TAFRA project management
+- Module and submodule management
+- Code generation
+- Project structure analysis
+- Configuration management
+- Database/DDL tooling
+- Validation
+- PHP tooling
+- Composer-based tooling
+- Git integration
+- Codex-assisted development
+- External editor integration
 
-Existing TAFRA ERP and OTA projects may be used as reference implementations when defining framework conventions.
+The Studio will primarily manage projects containing:
 
----
+- PHP
+- JavaScript
+- HTML
+- CSS
+- SQL
+- JSON
+- Markdown
+- configuration files
 
-## 2. Technology Stack
+
+## 2. Primary Technology
+
+TAFRA Studio is a native desktop application.
 
 Primary development environment:
 
-- Lazarus IDE: **4.8**
-- Language: **Object Pascal**
-- Compiler: Free Pascal Compiler supplied/supported by the Lazarus 4.8 environment
-- GUI framework: Lazarus LCL
-- Primary target: Windows
-- Architecture: 64-bit where supported
+- Lazarus 4.8
+- Free Pascal
+- Lazarus LCL
 
-Future Linux support should remain possible.
+The application must open, compile, debug, and run normally from
+the Lazarus IDE.
 
-Do not introduce Delphi-specific dependencies unless explicitly requested.
+Do not introduce technologies that prevent normal Lazarus IDE
+development.
 
-Do not introduce third-party Lazarus packages without approval.
 
-Prefer standard FPC/Lazarus libraries whenever practical.
+## 3. Core Architectural Principle
 
----
+TAFRA Studio uses a hybrid architecture.
 
-## 3. Core Design Principles
+Responsibilities are divided between:
 
-TAFRA Studio must remain:
+### Lazarus / Free Pascal
 
-- Lightweight
-- Modular
-- Maintainable
-- Easy to extend
-- Easy to understand
-- Loosely coupled
-- Conservative in external dependencies
+Use Pascal for:
 
-Avoid unnecessary abstraction and over-engineering.
+- Desktop GUI
+- Project navigation
+- Filesystem operations
+- Application configuration
+- Process execution
+- Operating-system integration
+- Project orchestration
+- Studio services
+- User interaction
 
-Prefer simple, explicit Object Pascal code over complex design patterns.
+### PHP
 
-Forms must NOT contain significant application or framework logic.
+PHP is a secondary tooling engine.
 
-UI code should primarily:
+Use PHP CLI when functionality is naturally better implemented
+using the PHP ecosystem, particularly:
 
-1. Collect user input.
-2. Call application services.
-3. Display results.
+- PHP source-code analysis
+- PHP AST processing
+- Composer libraries
+- PHP validation
+- Framework-specific PHP tooling
+- Future TAFRA command-line tools
 
----
+Do NOT duplicate mature PHP functionality in Pascal without a
+clear technical reason.
 
-## 4. Initial Project Structure
 
-Use the following logical structure unless an existing repository structure requires otherwise:
+## 4. PHP Runtime Architecture
 
-```text
-TAFRAStudio/
-├── src/
-│   ├── forms/
-│   ├── core/
-│   ├── project/
-│   ├── framework/
-│   ├── services/
-│   └── utils/
-│
-├── resources/
-│   ├── icons/
-│   └── templates/
-│
-├── config/
-├── docs/
-├── tests/
-│
-├── AGENTS.md
-├── README.md
-├── tafrastudio.lpi
-└── tafrastudio.lpr
-```
+TAFRA Studio must support a private PHP CLI runtime.
 
-Responsibilities:
+PHP is NOT used as a web server for TAFRA Studio.
 
-### `src/forms`
+The Studio must not require:
 
-Lazarus forms and UI-related units.
+- Apache
+- Nginx
+- IIS
+- XAMPP
+- a browser-based runtime
 
-Keep business logic out of forms.
+The intended architecture is:
 
-### `src/core`
+    Lazarus
+        |
+        v
+    TPHPToolRunner
+        |
+        v
+    TProcessRunner
+        |
+        v
+    PHP CLI
+        |
+        v
+    TAFRA PHP Tool
+        |
+        v
+    Composer libraries
+        |
+        v
+    JSON response
 
-Application-level infrastructure and common abstractions.
 
-Examples:
+## 5. PHP Runtime Separation
 
-- application initialization
-- configuration
-- logging
-- shared types
-- application constants
-
-### `src/project`
-
-TAFRA project inspection and representation.
-
-Examples:
-
-- project loader
-- directory scanner
-- project metadata
-- project model
-- project validation
-
-### `src/framework`
-
-Knowledge about the TAFRA Framework itself.
-
-Examples:
-
-- naming conventions
-- expected directories
-- module conventions
-- submodule conventions
-- component definitions
-- framework validation rules
-
-This layer must remain independent from the GUI.
-
-### `src/services`
-
-Application services coordinating operations between the UI, project layer, framework layer, and future Codex integration.
-
-### `src/utils`
-
-Small reusable utility functions.
-
-Do not turn `utils` into a location for unrelated application logic.
-
----
-
-## 5. Phase 1 Scope
-
-Current development is **Phase 1 — Studio Foundation & Project Understanding**.
-
-Phase 1 should implement only the foundation necessary for TAFRA Studio to understand an existing TAFRA project.
-
-Primary Phase 1 capabilities:
-
-1. Studio application shell.
-2. Open/close project.
-3. Recent-project support.
-4. Basic application configuration.
-5. Logging.
-6. TAFRA project detection.
-7. Project directory scanning.
-8. Module detection.
-9. Submodule detection.
-10. Component detection.
-11. Project Explorer.
-12. Internal TAFRA project metadata model.
-13. Basic framework validation.
-14. Preparation of structured project context for future Codex operations.
-
-Do NOT prematurely implement later Studio functionality.
-
----
-
-## 6. Main Application UI
-
-The initial main window should provide a clean Studio shell containing approximately:
-
-```text
-+----------------------------------------------------------+
-| Menu                                                     |
-+----------------------------------------------------------+
-| Toolbar                                                  |
-+-------------------+--------------------------------------+
-|                   |                                      |
-| Project Explorer  |          Workspace                   |
-|                   |                                      |
-|                   |                                      |
-+-------------------+--------------------------------------+
-| Output / Log                                             |
-+----------------------------------------------------------+
-| Status Bar                                               |
-+----------------------------------------------------------+
-```
-
-The exact UI may evolve.
-
-Avoid embedding framework processing directly into UI event handlers.
-
----
-
-## 7. TAFRA Project Model
-
-The Studio should eventually recognize entities including:
-
-```text
-TAFRA Project
-    |
-    +-- Modules
-          |
-          +-- Submodules
-                |
-                +-- Controllers
-                +-- Models
-                +-- Services
-                +-- Views
-                +-- Routes
-                +-- Assets
-```
-
-Design internal classes/records around these concepts rather than manipulating TreeView nodes as the authoritative project model.
-
-The Project Explorer is a **view of the project model**, not the project model itself.
-
----
-
-## 8. TAFRA Framework Knowledge
-
-Do not infer framework rules solely from generic PHP MVC conventions.
-
-TAFRA Framework has its own architecture and conventions.
-
-Framework knowledge should be obtained from:
-
-1. Explicit project documentation.
-2. Existing TAFRA Framework code.
-3. Existing TAFRA ERP implementation.
-4. Existing TAFRA OTA implementation.
-5. Instructions supplied for the current development task.
-
-When ERP and OTA implementations differ, do not automatically treat either implementation as the framework standard.
-
-Identify the difference and isolate project-specific behavior from framework-level rules.
-
----
-
-## 9. Existing Codebase Usage
-
-Existing ERP and OTA repositories are valuable reference material.
-
-Codex may analyze them to identify:
-
-- recurring directory structures
-- module patterns
-- submodule patterns
-- controllers
-- models
-- services
-- routes
-- views
-- configuration conventions
-- naming conventions
-
-However:
-
-**Existing application code is evidence of framework usage, not automatically the framework specification.**
-
-Do not copy business-specific ERP or OTA logic into TAFRA Studio framework rules.
-
----
-
-## 10. Codex Role
-
-Codex is expected to be the primary code-building assistant for TAFRA Studio.
-
-For every implementation task:
-
-1. Read this `AGENTS.md`.
-2. Inspect the existing repository.
-3. Understand the current implementation before modifying it.
-4. Reuse existing architecture where appropriate.
-5. Make the smallest coherent change necessary.
-6. Avoid unrelated refactoring.
-7. Preserve backward compatibility unless instructed otherwise.
-8. Compile/test affected functionality whenever practical.
-9. Report modified files and verification results.
-
-Do not redesign established architecture merely because another design is possible.
-
----
-
-## 11. Coding Conventions
-
-Use clear Object Pascal naming.
-
-Recommended conventions:
-
-```pascal
-TTAFRAProject
-TTAFRAModule
-TTAFRASubmodule
-TTAFRAProjectScanner
-TTAFRAProjectValidator
-TTAFRAFrameworkRules
-```
-
-Interfaces:
-
-```pascal
-ITAFRAProjectService
-```
-
-Private fields:
-
-```pascal
-FProjectPath
-FProjectName
-FModules
-```
-
-Methods should clearly communicate intent:
-
-```pascal
-LoadProject
-CloseProject
-ScanProject
-ValidateProject
-DetectModules
-DetectSubmodules
-```
-
-Constants should be explicit and centralized where appropriate.
-
-Avoid excessive global variables.
-
----
-
-## 12. Unit Design
-
-Prefer focused units with one clear responsibility.
-
-Example:
-
-```text
-uTAFRAProject.pas
-uTAFRAModule.pas
-uTAFRASubmodule.pas
-
-uProjectScanner.pas
-uProjectValidator.pas
-
-uFrameworkRules.pas
-
-uAppConfig.pas
-uLogger.pas
-```
-
-Do not create extremely large units containing unrelated classes.
-
-Likewise, do not create unnecessary one-class abstractions where they provide no architectural benefit.
-
----
-
-## 13. Error Handling
-
-Operations involving files and directories must handle failures safely.
-
-Examples:
-
-- project directory does not exist
-- access denied
-- malformed configuration
-- missing TAFRA directories
-- unsupported project structure
-- invalid module configuration
-
-Errors should normally:
-
-1. Produce a useful internal error/result.
-2. Be logged where appropriate.
-3. Be presented by the UI in understandable language.
-
-Avoid silently swallowing exceptions.
-
----
-
-## 14. File-System Safety
-
-TAFRA Studio will eventually generate and modify application code.
-
-Therefore file-system operations must be conservative.
-
-During Phase 1, project scanning should be **read-only by default**.
-
-Never:
-
-- delete application files automatically
-- overwrite existing source files without explicit intent
-- modify a project merely while scanning it
-- change framework files as a side effect of project detection
-
-Future generators must check for existing files before writing.
-
----
-
-## 15. Path Handling
-
-Never assume Windows path separators manually.
-
-Use appropriate FPC/Lazarus path utilities.
-
-TAFRA Studio should remain capable of supporting projects located on Windows or Linux-compatible file systems.
-
-Avoid code such as:
-
-```pascal
-Path := BasePath + '\app\modules';
-```
-
-Prefer platform-safe path construction.
-
----
-
-## 16. Configuration
-
-Studio-specific settings should remain separate from TAFRA application configuration.
-
-Potential Studio settings include:
-
-- recent projects
-- preferred external editor
-- Codex-related configuration
-- UI preferences
-- project scanning options
-
-Do not modify the target application's configuration simply to store Studio preferences.
-
----
-
-## 17. Logging
-
-Provide centralized logging rather than scattered file writes.
-
-At minimum support:
-
-```text
-INFO
-WARNING
-ERROR
-DEBUG
-```
-
-Logs should assist development and diagnosis without becoming a dependency for normal application behavior.
-
-Never log secrets, credentials, API keys, database passwords, or authentication tokens.
-
----
-
-## 18. Testing
-
-Core logic should be testable independently from Lazarus forms.
-
-Prioritize tests for:
-
-- project detection
-- project scanning
-- module detection
-- submodule detection
-- path handling
-- framework validation
-
-Where practical, use small fixture directories representing valid and invalid TAFRA projects.
-
-Do not require the GUI to test project scanning logic.
-
----
-
-## 19. Documentation
-
-Significant components should have concise documentation under `/docs`.
-
-Documentation should explain architecture and behavior rather than duplicate source code.
-
-When introducing an important subsystem, document:
-
-- purpose
-- responsibilities
-- inputs
-- outputs
-- dependencies
-- important design decisions
-
-Keep documentation synchronized with implementation.
-
----
-
-## 20. Codex Change Discipline
-
-Before implementing a requested feature:
-
-### Inspect
-
-Determine which existing files and components are relevant.
-
-### Plan
-
-Identify the minimum files that require modification.
-
-### Implement
-
-Follow existing project architecture and this document.
-
-### Verify
-
-Compile or test the affected components where possible.
-
-### Report
-
-Provide a concise completion report containing:
-
-```text
-Implemented:
-- ...
-
-Files created:
-- ...
-
-Files modified:
-- ...
-
-Verification:
-- ...
-
-Remaining issues:
-- ...
-```
-
-Do not claim compilation or tests succeeded unless they were actually executed successfully.
-
----
-
-## 21. Dependency Policy
-
-Default rule:
-
-**Use Lazarus/FPC standard capabilities first.**
-
-A third-party package should only be introduced when it provides substantial value that would otherwise require significant custom implementation.
-
-Before introducing one, identify:
-
-- purpose
-- package/library
-- license where relevant
-- reason it is required
-- alternative using standard FPC/Lazarus functionality
-
-Do not introduce dependencies merely for convenience.
-
----
-
-## 22. Future Codex Integration
-
-TAFRA Studio will eventually provide structured context to Codex.
-
-Design current components so the Studio can later produce information such as:
-
-```text
-Project
-Framework Version
-Modules
-Submodules
-Relevant Files
-Routes
-Database Objects
-Framework Rules
-Requested Operation
-```
-
-Codex integration must remain separated from project scanning and framework modeling.
+Keep the Studio PHP runtime separate from the PHP runtime used
+by a TAFRA project.
 
 Conceptually:
 
-```text
-TAFRA Project
-      |
-      v
-Project Scanner
-      |
-      v
-Internal Project Model
-      |
-      +------> Project Explorer
-      |
-      +------> Validator
-      |
-      +------> Future Generator
-      |
-      +------> Codex Context Builder
-                    |
-                    v
-                  Codex
-```
+    TAFRA Studio
+    |
+    +-- Studio PHP Runtime
+    |     Used internally by TAFRA Studio
+    |
+    +-- Project PHP Runtime
+          Used by the developer's TAFRA project
 
-The internal project model should therefore become the common source of project information.
+Never assume that both runtimes use the same PHP version.
 
----
+Future Studio versions may use a different PHP version from the
+target TAFRA application.
 
-## 23. Architectural Boundary
 
-Maintain this fundamental separation:
+## 6. Process Execution
 
-```text
-UI
- |
- v
-Services
- |
- +-------------------+
- |                   |
- v                   v
-Project Layer    Framework Layer
- |
- v
-File System
-```
+External processes must not be executed randomly throughout the
+application.
 
-Future:
+Create a centralized process execution abstraction.
 
-```text
-Services
-   |
-   +--> Generators
-   |
-   +--> Codex Integration
-   |
-   +--> Database Tools
-```
+Primary service:
 
-Avoid dependencies flowing from core/framework logic back toward forms.
+    TProcessRunner
 
----
+Responsibilities include:
 
-## 24. Current Priority
+- executable path
+- arguments
+- working directory
+- exit code
+- stdout capture
+- stderr capture
+- timeout handling
+- execution errors
 
-During Phase 1, optimize for:
+PHP execution must be implemented through:
 
-**Correct understanding of a TAFRA project before automatic generation of a TAFRA project.**
+    TPHPToolRunner
 
-The preferred implementation sequence is:
+TPHPToolRunner must internally use TProcessRunner.
 
-```text
-Studio Shell
-     ↓
-Project Detection
-     ↓
-Project Scanner
-     ↓
-Internal Project Model
-     ↓
-Project Explorer
-     ↓
-Framework Validation
-     ↓
-Codex Context Preparation
-```
+Do not directly invoke php.exe from forms or unrelated units.
 
-Do not move significant code-generation functionality ahead of reliable project understanding.
 
----
+## 7. PHP Tool Communication
 
-## 25. General Rule
+Communication between Lazarus and PHP tools should use JSON
+whenever structured information is returned.
 
-When requirements are ambiguous:
+Successful example:
 
-- preserve existing behavior
-- prefer the simplest implementation
-- avoid destructive operations
-- avoid speculative features
-- keep framework rules configurable where reasonable
-- clearly identify assumptions
+    {
+        "success": true,
+        "php_version": "8.2.27",
+        "message": "TAFRA PHP runtime available"
+    }
 
-TAFRA Studio should evolve incrementally through small, testable phases rather than becoming a large monolithic IDE.
+Failure example:
+
+    {
+        "success": false,
+        "error_code": "PHP_RUNTIME_ERROR",
+        "message": "Unable to execute PHP runtime"
+    }
+
+Avoid parsing human-readable console output when structured JSON
+can be returned.
+
+
+## 8. Directory Philosophy
+
+Keep application responsibilities separated.
+
+Suggested structure:
+
+    /src
+        /core
+        /services
+        /ui
+        /models
+        /utils
+
+    /runtime
+        /php
+
+    /tools
+        /php
+
+    /resources
+        /templates
+
+    /config
+
+Exact directories may evolve as the architecture develops.
+
+Do not reorganize the entire project without a concrete
+architectural requirement.
+
+
+## 9. Phase 1 Scope
+
+Phase 1 establishes the application foundation only.
+
+Implement:
+
+- Lazarus project
+- Main application shell
+- Core directory structure
+- Application configuration
+- Path handling
+- TProcessRunner
+- TPHPToolRunner
+- PHP runtime configuration
+- PHP health-check tool
+- JSON response handling
+- Basic error handling
+- Basic logging
+
+The Phase 1 PHP integration is a proof of architecture.
+
+Do NOT implement advanced PHP tooling during Phase 1.
+
+
+## 10. Out of Scope for Phase 1
+
+Do NOT implement unless explicitly requested:
+
+- PHP AST parsing
+- Composer package management UI
+- TAFRA module generation
+- TAFRA submodule generation
+- Automatic controller generation
+- Automatic model generation
+- Database designer
+- Git GUI
+- Codex integration
+- VS Code integration
+- Full source-code editor
+- syntax highlighting engine
+- debugging environment
+- deployment management
+
+These belong to later phases.
+
+
+## 11. Composer Strategy
+
+TAFRA Studio may use Composer packages through its PHP tooling
+layer.
+
+Composer is primarily a development/dependency-management tool.
+
+Production/release builds should eventually be capable of
+shipping the required PHP dependencies with TAFRA Studio.
+
+Do not assume Composer must be globally installed on the user's
+Windows machine.
+
+Do not introduce a Composer dependency unless it provides a
+clear benefit.
+
+
+## 12. Windows Deployment
+
+TAFRA Studio is initially Windows-focused.
+
+The target deployment model is approximately:
+
+    TAFRA Studio/
+    |
+    +-- TafraStudio.exe
+    |
+    +-- runtime/
+    |   +-- php/
+    |       +-- php.exe
+    |       +-- php.ini
+    |       +-- ext/
+    |
+    +-- tools/
+    |   +-- php/
+    |
+    +-- vendor/
+    |
+    +-- resources/
+    |
+    +-- config/
+
+The final installer should eventually be capable of installing
+TAFRA Studio without requiring the user to separately configure
+PHP, Composer, XAMPP, or a web server.
+
+
+## 13. Coding Rules
+
+Prefer:
+
+- simple architecture
+- small focused units
+- explicit dependencies
+- readable Pascal
+- meaningful class names
+- centralized configuration
+- reusable services
+- clear error handling
+
+Avoid:
+
+- unnecessary abstraction
+- premature frameworks
+- global state
+- duplicated process execution code
+- hard-coded absolute paths
+- GUI logic mixed with tooling logic
+- premature optimization
+
+
+## 14. Development Philosophy
+
+TAFRA Studio must grow incrementally.
+
+For every feature:
+
+1. Define the responsibility.
+2. Define the architectural layer.
+3. Implement the smallest useful version.
+4. Test it.
+5. Document important decisions.
+6. Continue to the next capability.
+
+Do not build speculative functionality simply because it may be
+useful later.
+
+
+## 15. Codex Instructions
+
+When modifying TAFRA Studio:
+
+- Read this AGENTS.md first.
+- Respect the current project structure.
+- Inspect existing code before creating replacements.
+- Prefer modifying existing abstractions over duplicating them.
+- Keep Lazarus 4.8 compatibility.
+- Keep Free Pascal compatibility.
+- Keep Windows compatibility.
+- Do not introduce unnecessary dependencies.
+- Do not convert TAFRA Studio into a PHP application.
+- Do not introduce a web server requirement.
+- Route PHP execution through TPHPToolRunner.
+- Route generic external processes through TProcessRunner.
+- Keep UI and tooling/business logic separated.
+- Keep changes scoped to the requested phase or task.
+- Compile/test relevant changes whenever practical.
+
+
+## 16. Phase 1 Completion Criteria
+
+Phase 1 is complete when:
+
+1. TAFRA Studio opens successfully in Lazarus 4.8.
+2. The project compiles without errors.
+3. The application runs as a Windows desktop application.
+4. Core paths/configuration are initialized.
+5. TProcessRunner can execute an external process.
+6. TPHPToolRunner can invoke the configured PHP CLI runtime.
+7. The PHP health-check tool executes successfully.
+8. Lazarus receives and parses the JSON response.
+9. PHP/process failures are handled without crashing the Studio.
+10. The architecture is ready for Phase 2 without major restructuring.
