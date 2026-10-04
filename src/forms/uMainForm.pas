@@ -10,8 +10,9 @@ uses
   uSettingsService, uComposerRunner, uProjectSession, uProjectScanner,
   uProjectAnalyzer, uTAFRAFrameworkRules, uProjectExplorerPresenter,
   uModuleManagementService, uSettingsForm, uSourceFileService, uResultTypes,
-  uProjectModel, uThemeService, SynEdit, SynHighlighterPHP, SynHighlighterJScript,
-  SynHighlighterCss, SynHighlighterHtml, SynHighlighterSQL;
+  uProjectModel, uThemeService, uPasswordGeneratorForm, SynEdit,
+  SynHighlighterPHP, SynHighlighterJScript, SynHighlighterCss,
+  SynHighlighterHtml, SynHighlighterSQL;
 
 type
 
@@ -32,6 +33,7 @@ type
     OutputMenuItem: TMenuItem;
     OutputPanel: TPanel;
     OutputSplitter: TSplitter;
+    PasswordGeneratorMenuItem: TMenuItem;
     ProjectMenuItem: TMenuItem;
     ProjectExplorerActionsPanel: TPanel;
     ProjectExplorerMenuItem: TMenuItem;
@@ -44,6 +46,7 @@ type
     ApplicationSettingsMenuItem: TMenuItem;
     StatusBar: TStatusBar;
     ToolBar: TToolBar;
+    ToolsMenuItem: TMenuItem;
     ViewMenuItem: TMenuItem;
     WorkspacePanel: TPanel;
     AboutMenuItem: TMenuItem;
@@ -57,6 +60,7 @@ type
     procedure ApplicationSettingsMenuItemClick(Sender: TObject);
     procedure OpenProjectMenuItemClick(Sender: TObject);
     procedure OutputMenuItemClick(Sender: TObject);
+    procedure PasswordGeneratorMenuItemClick(Sender: TObject);
     procedure ProjectExplorerMenuItemClick(Sender: TObject);
     procedure ProjectTreePopupMenuPopup(Sender: TObject);
     procedure ProjectTreeViewChange(Sender: TObject; Node: TTreeNode);
@@ -114,12 +118,15 @@ type
     FCssHighlighter: TSynCssSyn;
     FHtmlHighlighter: TSynHTMLSyn;
     FSQLHighlighter: TSynSQLSyn;
+    FCodeQualityMenuItem: TMenuItem;
+    FAnalyzeCodeQualityMenuItem: TMenuItem;
     function AddModuleManagementMenuItem(AOwnerMenu: TMenuItem;
       AAction: TModuleManagementAction): TMenuItem;
     function AddModuleManagementPopupItem(AAction: TModuleManagementAction
       ): TMenuItem;
     procedure AnalyzeCurrentProject;
     procedure CreateAnalyzerMenu;
+    procedure CreateCodeQualityMenu;
     procedure CreateAnalyzerView;
     procedure CreateModuleManagementMenus;
     function CurrentModuleManagementContext: TModuleManagementContext;
@@ -128,6 +135,7 @@ type
     procedure HandleLog(Sender: TObject; ALevel: TLogLevel;
       const AMessage: string);
     procedure ModuleManagementMenuItemClick(Sender: TObject);
+    procedure AnalyzeCodeQualityMenuItemClick(Sender: TObject);
     procedure LogProjectIssues(AProject: TTAFRAProject);
     procedure LoadApplicationIcon;
     function LogoIconPath: string;
@@ -198,6 +206,7 @@ begin
   FProjectExplorerPresenter := TProjectExplorerPresenter.Create;
   CreateAnalyzerMenu;
   CreateModuleManagementMenus;
+  CreateCodeQualityMenu;
   CreateAnalyzerView;
   ApplyApplicationTheme;
   ApplySourceViewerSettings;
@@ -470,6 +479,19 @@ begin
   OutputSplitter.Visible := OutputMenuItem.Checked;
 end;
 
+procedure TMainForm.PasswordGeneratorMenuItemClick(Sender: TObject);
+var
+  PasswordGeneratorForm: TPasswordGeneratorForm;
+begin
+  PasswordGeneratorForm := TPasswordGeneratorForm.Create(Self, FThemeService,
+    FSettingsService.Settings.ThemeName);
+  try
+    PasswordGeneratorForm.ShowModal;
+  finally
+    PasswordGeneratorForm.Free;
+  end;
+end;
+
 procedure TMainForm.AboutMenuItemClick(Sender: TObject);
 var
   AboutForm: TForm;
@@ -618,6 +640,20 @@ begin
     AddModuleManagementPopupItem(mmaCheckSubmoduleNaming);
 
   UpdateModuleManagementActions;
+end;
+
+procedure TMainForm.CreateCodeQualityMenu;
+begin
+  FCodeQualityMenuItem := TMenuItem.Create(MainMenu);
+  FCodeQualityMenuItem.Caption := '&Code Quality';
+  FCodeQualityMenuItem.Enabled := False;
+  ProjectMenuItem.Add(FCodeQualityMenuItem);
+
+  FAnalyzeCodeQualityMenuItem := TMenuItem.Create(MainMenu);
+  FAnalyzeCodeQualityMenuItem.Caption := '&Analyze Code Quality';
+  FAnalyzeCodeQualityMenuItem.Enabled := False;
+  FAnalyzeCodeQualityMenuItem.OnClick := @AnalyzeCodeQualityMenuItemClick;
+  FCodeQualityMenuItem.Add(FAnalyzeCodeQualityMenuItem);
 end;
 
 function TMainForm.CurrentModuleManagementContext: TModuleManagementContext;
@@ -801,6 +837,11 @@ begin
   finally
     ResultInfo.Free;
   end;
+end;
+
+procedure TMainForm.AnalyzeCodeQualityMenuItemClick(Sender: TObject);
+begin
+  ShowMessage('Code Quality analysis will be implemented in the next step.');
 end;
 
 procedure TMainForm.LogProjectIssues(AProject: TTAFRAProject);
@@ -1320,6 +1361,10 @@ begin
     FModulesManagementMenuItem.Enabled := CurrentProjectPath <> '';
   if Assigned(FScanProjectMenuItem) then
     FScanProjectMenuItem.Enabled := CurrentProjectPath <> '';
+  if Assigned(FCodeQualityMenuItem) then
+    FCodeQualityMenuItem.Enabled := CurrentProjectPath <> '';
+  if Assigned(FAnalyzeCodeQualityMenuItem) then
+    FAnalyzeCodeQualityMenuItem.Enabled := CurrentProjectPath <> '';
 
   if CurrentProjectPath = '' then
     StatusBar.SimpleText := 'No project open'

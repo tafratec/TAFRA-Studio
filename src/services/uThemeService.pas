@@ -220,6 +220,11 @@ begin
   begin
     TCustomLabel(AControl).Font.Color := ATheme.TextColor
   end
+  else if AControl is TCustomGroupBox then
+  begin
+    TCustomGroupBox(AControl).Color := ATheme.WindowColor;
+    TCustomGroupBox(AControl).Font.Color := ATheme.TextColor;
+  end
   else if AControl is TCustomPanel then
   begin
     TCustomPanel(AControl).Color := ATheme.PanelColor;

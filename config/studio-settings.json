@@ -5,7 +5,7 @@
     "project_php_mode" : "auto"
   },
   "composer" : {
-    "composer_path" : "",
+    "composer_path" : "C:\\ProgramData\\ComposerSetup\\bin\\composer.bat",
     "runtime_mode" : "project_php",
     "custom_php" : ""
   },

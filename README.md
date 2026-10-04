@@ -25,6 +25,7 @@ Start with:
 - `docs/manual/07- modules-management.md`
 - `docs/manual/08- application-settings.md`
 - `docs/manual/09- source-viewer.md`
+- `docs/manual/10- generic-tools.md`
 
 ## Build and Run
 

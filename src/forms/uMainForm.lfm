@@ -179,6 +179,13 @@ object MainForm: TMainForm
       Caption = '&Project'
       Enabled = False
     end
+    object ToolsMenuItem: TMenuItem
+      Caption = '&Tools'
+      object PasswordGeneratorMenuItem: TMenuItem
+        Caption = '&Password Generator...'
+        OnClick = PasswordGeneratorMenuItemClick
+      end
+    end
     object SettingsMenuItem: TMenuItem
       Caption = '&Settings'
       object ApplicationSettingsMenuItem: TMenuItem

@@ -49,6 +49,11 @@
         <UnitName Value="uSettingsForm"/>
       </Unit>
       <Unit>
+        <Filename Value="src/forms/uPasswordGeneratorForm.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uPasswordGeneratorForm"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/core/uResultTypes.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uResultTypes"/>
@@ -92,6 +97,11 @@
         <Filename Value="src/services/uThemeService.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uThemeService"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/services/uPasswordGeneratorService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uPasswordGeneratorService"/>
       </Unit>
       <Unit>
         <Filename Value="src/models/uProjectModel.pas"/>
