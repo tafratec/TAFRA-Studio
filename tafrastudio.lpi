@@ -104,6 +104,21 @@
         <UnitName Value="uPasswordGeneratorService"/>
       </Unit>
       <Unit>
+        <Filename Value="src/services/uCodeQualityToolRunner.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uCodeQualityToolRunner"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/services/uCodeQualityService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uCodeQualityService"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/services/uFlowchartService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uFlowchartService"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/models/uProjectModel.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uProjectModel"/>
@@ -112,6 +127,11 @@
         <Filename Value="src/models/uStudioSettings.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uStudioSettings"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/models/uCodeQualityModel.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uCodeQualityModel"/>
       </Unit>
       <Unit>
         <Filename Value="src/framework/uTAFRAFrameworkRules.pas"/>

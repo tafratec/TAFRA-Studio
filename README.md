@@ -26,6 +26,9 @@ Start with:
 - `docs/manual/08- application-settings.md`
 - `docs/manual/09- source-viewer.md`
 - `docs/manual/10- generic-tools.md`
+- `docs/manual/11- code-quality.md`
+- `docs/manual/12- code-quality-package-setup.md`
+- `docs/manual/13- method-flowcharts.md`
 
 ## Build and Run
 

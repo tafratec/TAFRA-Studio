@@ -10,9 +10,10 @@ uses
   uSettingsService, uComposerRunner, uProjectSession, uProjectScanner,
   uProjectAnalyzer, uTAFRAFrameworkRules, uProjectExplorerPresenter,
   uModuleManagementService, uSettingsForm, uSourceFileService, uResultTypes,
-  uProjectModel, uThemeService, uPasswordGeneratorForm, SynEdit,
-  SynHighlighterPHP, SynHighlighterJScript, SynHighlighterCss,
-  SynHighlighterHtml, SynHighlighterSQL;
+  uProjectModel, uCodeQualityModel, uThemeService, uPasswordGeneratorForm,
+  uCodeQualityService, uCodeQualityToolRunner, SynEdit, SynHighlighterPHP,
+  uFlowchartService, SynHighlighterJScript, SynHighlighterCss, SynHighlighterHtml,
+  SynHighlighterSQL;
 
 type
 
@@ -78,6 +79,9 @@ type
     FThemeService: TThemeService;
     FComposerRunner: TComposerRunner;
     FPHPToolRunner: TPHPToolRunner;
+    FCodeQualityToolRunner: TCodeQualityToolRunner;
+    FCodeQualityService: TCodeQualityService;
+    FFlowchartService: TFlowchartService;
     FFrameworkRules: TTAFRAFrameworkRules;
     FProjectScanner: TProjectScanner;
     FProjectAnalyzer: TProjectAnalyzer;
@@ -120,6 +124,9 @@ type
     FSQLHighlighter: TSynSQLSyn;
     FCodeQualityMenuItem: TMenuItem;
     FAnalyzeCodeQualityMenuItem: TMenuItem;
+    FCodeIntelligenceMenuItem: TMenuItem;
+    FGenerateFlowchartMenuItem: TMenuItem;
+    FCurrentSourceFilePath: string;
     function AddModuleManagementMenuItem(AOwnerMenu: TMenuItem;
       AAction: TModuleManagementAction): TMenuItem;
     function AddModuleManagementPopupItem(AAction: TModuleManagementAction
@@ -127,6 +134,7 @@ type
     procedure AnalyzeCurrentProject;
     procedure CreateAnalyzerMenu;
     procedure CreateCodeQualityMenu;
+    procedure CreateCodeIntelligenceMenu;
     procedure CreateAnalyzerView;
     procedure CreateModuleManagementMenus;
     function CurrentModuleManagementContext: TModuleManagementContext;
@@ -136,6 +144,7 @@ type
       const AMessage: string);
     procedure ModuleManagementMenuItemClick(Sender: TObject);
     procedure AnalyzeCodeQualityMenuItemClick(Sender: TObject);
+    procedure GenerateFlowchartMenuItemClick(Sender: TObject);
     procedure LogProjectIssues(AProject: TTAFRAProject);
     procedure LoadApplicationIcon;
     function LogoIconPath: string;
@@ -152,6 +161,8 @@ type
       ANodeInfo: TProjectExplorerNodeInfo): Boolean;
     function NormalizeAnalyzerPath(const APath: string): string;
     procedure OpenSourceFile(const AFilePath: string);
+    function SelectFlowchartMethod(const AFilePath: string;
+      out AMethodName: string): Boolean;
     function PrepareModuleManagementContext(AAction: TModuleManagementAction;
       var AContext: TModuleManagementContext): Boolean;
     procedure ReloadCurrentProject;
@@ -196,6 +207,10 @@ begin
   FComposerRunner := TComposerRunner.Create(FProcessRunner, FSettingsService);
   FPHPToolRunner := TPHPToolRunner.Create(FAppPaths, FProcessRunner,
     FSettingsService);
+  FCodeQualityToolRunner := TCodeQualityToolRunner.Create(FProcessRunner,
+    FPHPToolRunner);
+  FCodeQualityService := TCodeQualityService.Create(FCodeQualityToolRunner);
+  FFlowchartService := TFlowchartService.Create(FAppPaths, FPHPToolRunner);
   FFrameworkRules := TTAFRAFrameworkRules.Create;
   FProjectScanner := TProjectScanner.Create(FFrameworkRules);
   FProjectAnalyzer := TProjectAnalyzer.Create;
@@ -207,6 +222,7 @@ begin
   CreateAnalyzerMenu;
   CreateModuleManagementMenus;
   CreateCodeQualityMenu;
+  CreateCodeIntelligenceMenu;
   CreateAnalyzerView;
   ApplyApplicationTheme;
   ApplySourceViewerSettings;
@@ -227,6 +243,9 @@ begin
   FProjectAnalyzer.Free;
   FProjectScanner.Free;
   FFrameworkRules.Free;
+  FFlowchartService.Free;
+  FCodeQualityService.Free;
+  FCodeQualityToolRunner.Free;
   FPHPToolRunner.Free;
   FComposerRunner.Free;
   FThemeService.Free;
@@ -656,6 +675,20 @@ begin
   FCodeQualityMenuItem.Add(FAnalyzeCodeQualityMenuItem);
 end;
 
+procedure TMainForm.CreateCodeIntelligenceMenu;
+begin
+  FCodeIntelligenceMenuItem := TMenuItem.Create(MainMenu);
+  FCodeIntelligenceMenuItem.Caption := 'Code &Intelligence';
+  FCodeIntelligenceMenuItem.Enabled := False;
+  ProjectMenuItem.Add(FCodeIntelligenceMenuItem);
+
+  FGenerateFlowchartMenuItem := TMenuItem.Create(MainMenu);
+  FGenerateFlowchartMenuItem.Caption := 'Generate Method &Flowchart...';
+  FGenerateFlowchartMenuItem.Enabled := False;
+  FGenerateFlowchartMenuItem.OnClick := @GenerateFlowchartMenuItemClick;
+  FCodeIntelligenceMenuItem.Add(FGenerateFlowchartMenuItem);
+end;
+
 function TMainForm.CurrentModuleManagementContext: TModuleManagementContext;
 var
   NodeInfo: TProjectExplorerNodeInfo;
@@ -840,8 +873,108 @@ begin
 end;
 
 procedure TMainForm.AnalyzeCodeQualityMenuItemClick(Sender: TObject);
+var
+  I: Integer;
+  Finding: TCodeQualityFinding;
+  Report: TCodeQualityReport;
 begin
-  ShowMessage('Code Quality analysis will be implemented in the next step.');
+  if not Assigned(FCodeQualityService) then
+  begin
+    ShowMessage('Code Quality service is not available.');
+    Exit;
+  end;
+
+  Report := FCodeQualityService.AnalyzeProject(FProjectSession.CurrentProject);
+  try
+    FLogger.Info('Code Quality foundation report created for: ' +
+      Report.ProjectPath);
+    for I := 0 to Report.Findings.Count - 1 do
+    begin
+      Finding := TCodeQualityFinding(Report.Findings[I]);
+      FLogger.Info('Code Quality [' +
+        CodeQualitySeverityToString(Finding.Severity) + '] ' +
+        Finding.ToolName + ': ' + Finding.MessageText);
+    end;
+
+    ShowMessage('Code Quality service is ready.' + LineEnding + LineEnding +
+      'Project: ' + Report.ProjectPath + LineEnding +
+      'Findings: ' + IntToStr(Report.Findings.Count) + LineEnding +
+      'Critical: ' + IntToStr(Report.CountBySeverity(cqsCritical)) +
+      LineEnding +
+      'Warnings: ' + IntToStr(Report.CountBySeverity(cqsWarning)) +
+      LineEnding +
+      'Info: ' + IntToStr(Report.CountBySeverity(cqsInfo)));
+  finally
+    Report.Free;
+  end;
+end;
+
+procedure TMainForm.GenerateFlowchartMenuItemClick(Sender: TObject);
+var
+  FilePath: string;
+  SelectedMethodName: string;
+  NodeInfo: TProjectExplorerNodeInfo;
+  SaveDialog: TSaveDialog;
+  SvgFile: TStringList;
+  FlowResult: TFlowchartResult;
+begin
+  if not Assigned(FFlowchartService) then
+  begin
+    ShowMessage('Flowchart service is not available.');
+    Exit;
+  end;
+
+  FilePath := FCurrentSourceFilePath;
+  NodeInfo := CurrentProjectExplorerNodeInfo;
+  if Assigned(NodeInfo) and (NodeInfo.Kind = penFile) and
+    SameText(ExtractFileExt(NodeInfo.Path), '.php') then
+    FilePath := NodeInfo.Path;
+
+  if (FilePath = '') or not SameText(ExtractFileExt(FilePath), '.php') then
+  begin
+    ShowMessage('Select or open a PHP file before generating a flowchart.');
+    Exit;
+  end;
+
+  if not SelectFlowchartMethod(FilePath, SelectedMethodName) then
+    Exit;
+
+  FlowResult := FFlowchartService.GenerateMethodSvg(FilePath,
+    SelectedMethodName);
+  try
+    if not FlowResult.Success then
+    begin
+      ShowMessage(FlowResult.MessageText);
+      FLogger.Warning(FlowResult.MessageText);
+      Exit;
+    end;
+
+    SaveDialog := TSaveDialog.Create(Self);
+    try
+      SaveDialog.Title := 'Save Flowchart As';
+      SaveDialog.Filter := 'SVG files|*.svg|All files|*.*';
+      SaveDialog.DefaultExt := 'svg';
+      SaveDialog.FileName := StringReplace(SelectedMethodName, '::', '-', []) +
+        '-flowchart.svg';
+      if not SaveDialog.Execute then
+        Exit;
+
+      SvgFile := TStringList.Create;
+      try
+        SvgFile.Text := FlowResult.SvgText;
+        SvgFile.SaveToFile(SaveDialog.FileName);
+      finally
+        SvgFile.Free;
+      end;
+
+      FLogger.Info('Flowchart saved: ' + SaveDialog.FileName);
+      ShowMessage('Flowchart saved:' + LineEnding + SaveDialog.FileName);
+    finally
+      SaveDialog.Free;
+    end;
+  finally
+    FlowResult.Free;
+  end;
 end;
 
 procedure TMainForm.LogProjectIssues(AProject: TTAFRAProject);
@@ -1046,6 +1179,7 @@ begin
   try
     if not SourceResult.Success then
     begin
+      FCurrentSourceFilePath := '';
       FSourcePathLabel.Caption := AFilePath;
       FSourceEditor.Highlighter := nil;
       FSourceEditor.Lines.Text := SourceResult.MessageText;
@@ -1070,6 +1204,7 @@ begin
       FSourceEditor.Highlighter := nil;
 
     FSourcePathLabel.Caption := SourceResult.FilePath;
+    FCurrentSourceFilePath := SourceResult.FilePath;
     FSourceEditor.Lines.Text := SourceResult.Content;
     FSourceEditor.ReadOnly := True;
     FSourceEditor.CaretX := 1;
@@ -1077,6 +1212,90 @@ begin
     FAnalyzerPages.ActivePage := FSourceTab;
   finally
     SourceResult.Free;
+  end;
+end;
+
+function TMainForm.SelectFlowchartMethod(const AFilePath: string;
+  out AMethodName: string): Boolean;
+var
+  CancelButton: TButton;
+  DialogForm: TForm;
+  LabelControl: TLabel;
+  ListBox: TListBox;
+  Methods: TStringList;
+  OkButton: TButton;
+begin
+  Result := False;
+  AMethodName := '';
+
+  Methods := FFlowchartService.ListMethods(AFilePath);
+  try
+    if Methods.Count = 0 then
+    begin
+      ShowMessage('No named functions or methods were found in this PHP file.');
+      Exit;
+    end;
+
+    if Methods.Count = 1 then
+    begin
+      AMethodName := Methods[0];
+      Exit(True);
+    end;
+
+    DialogForm := TForm.Create(Self);
+    try
+      DialogForm.Caption := 'Select Method';
+      DialogForm.BorderStyle := bsDialog;
+      DialogForm.Position := poOwnerFormCenter;
+      DialogForm.Width := 460;
+      DialogForm.Height := 360;
+
+      LabelControl := TLabel.Create(DialogForm);
+      LabelControl.Parent := DialogForm;
+      LabelControl.Left := 16;
+      LabelControl.Top := 16;
+      LabelControl.Caption := 'Select a function or method to diagram:';
+
+      ListBox := TListBox.Create(DialogForm);
+      ListBox.Parent := DialogForm;
+      ListBox.Left := 16;
+      ListBox.Top := 44;
+      ListBox.Width := 412;
+      ListBox.Height := 230;
+      ListBox.Items.Assign(Methods);
+      ListBox.ItemIndex := 0;
+
+      OkButton := TButton.Create(DialogForm);
+      OkButton.Parent := DialogForm;
+      OkButton.Left := 236;
+      OkButton.Top := 292;
+      OkButton.Width := 90;
+      OkButton.Caption := 'OK';
+      OkButton.Default := True;
+      OkButton.ModalResult := mrOK;
+
+      CancelButton := TButton.Create(DialogForm);
+      CancelButton.Parent := DialogForm;
+      CancelButton.Left := 338;
+      CancelButton.Top := 292;
+      CancelButton.Width := 90;
+      CancelButton.Caption := 'Cancel';
+      CancelButton.ModalResult := mrCancel;
+
+      if Assigned(FThemeService) and Assigned(FSettingsService) then
+        FThemeService.ApplyTheme(DialogForm, FSettingsService.Settings.ThemeName);
+
+      if DialogForm.ShowModal = mrOK then
+      begin
+        if ListBox.ItemIndex >= 0 then
+          AMethodName := ListBox.Items[ListBox.ItemIndex];
+        Result := AMethodName <> '';
+      end;
+    finally
+      DialogForm.Free;
+    end;
+  finally
+    Methods.Free;
   end;
 end;
 
@@ -1365,6 +1584,10 @@ begin
     FCodeQualityMenuItem.Enabled := CurrentProjectPath <> '';
   if Assigned(FAnalyzeCodeQualityMenuItem) then
     FAnalyzeCodeQualityMenuItem.Enabled := CurrentProjectPath <> '';
+  if Assigned(FCodeIntelligenceMenuItem) then
+    FCodeIntelligenceMenuItem.Enabled := CurrentProjectPath <> '';
+  if Assigned(FGenerateFlowchartMenuItem) then
+    FGenerateFlowchartMenuItem.Enabled := CurrentProjectPath <> '';
 
   if CurrentProjectPath = '' then
     StatusBar.SimpleText := 'No project open'
