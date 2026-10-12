@@ -5,12 +5,14 @@ unit uCodeQualityService;
 interface
 
 uses
-  uCodeQualityModel, uCodeQualityToolRunner, uProjectModel, uResultTypes;
+  Classes, uAppPaths, uCodeQualityModel, uCodeQualityToolRunner, uProjectModel,
+  uResultTypes;
 
 type
   TCodeQualityService = class
   private
     FToolRunner: TCodeQualityToolRunner;
+    FAppPaths: TAppPaths;
     FConfiguration: TCodeQualityConfiguration;
     procedure AddConfigurationFinding(AReport: TCodeQualityReport);
     procedure AddToolDetectionFindings(AReport: TCodeQualityReport;
@@ -29,6 +31,14 @@ type
     function DetectRectorPath(const AProjectPath: string): string;
     function FindFirstExisting(const AProjectPath: string;
       const ACandidates: array of string): string;
+    function ExecuteAnalysisTool(const AToolPath: string; AArguments: TStrings;
+      const AWorkingDirectory: string; ATimeoutMS: Cardinal;
+      AReport: TCodeQualityReport; const AToolName: string): TProcessResult;
+    procedure AddToolStatus(AReport: TCodeQualityReport; const AToolName,
+      AToolPath, AOutcome, AStandardError: string; AElapsedMilliseconds: QWord);
+    procedure AddStudioDefaultRulesWarning(AReport: TCodeQualityReport;
+      const AToolName, AToolPath, AConfigPath: string);
+    function ToolSource(const AToolPath: string): string;
     function IsExcludedPath(const ARelativePath: string): Boolean;
     function IsIncludedPath(const ARelativePath: string): Boolean;
     function NormalizeRelativePath(const APath: string): string;
@@ -39,6 +49,8 @@ type
     procedure ParsePHPStanOutput(AReport: TCodeQualityReport;
       const AOutput: string);
     function ProjectPath(const AProjectPath, ARelativePath: string): string;
+    function ProjectToolConfigPath(const AProjectPath: string;
+      const ACandidates: array of string): string;
     procedure RunPHPCSFixerDryRun(AReport: TCodeQualityReport;
       AProject: TTAFRAProject);
     procedure RunPHPCSAnalysis(AReport: TCodeQualityReport;
@@ -48,7 +60,7 @@ type
     procedure RunReadOnlyAnalyses(AReport: TCodeQualityReport;
       AProject: TTAFRAProject);
   public
-    constructor Create(AToolRunner: TCodeQualityToolRunner);
+    constructor Create(AToolRunner: TCodeQualityToolRunner; AAppPaths: TAppPaths);
     destructor Destroy; override;
     function AnalyzeProject(AProject: TTAFRAProject): TCodeQualityReport;
     property Configuration: TCodeQualityConfiguration read FConfiguration;
@@ -58,12 +70,14 @@ type
 implementation
 
 uses
-  Classes, fpjson, jsonparser, SysUtils;
+  fpjson, jsonparser, SysUtils;
 
-constructor TCodeQualityService.Create(AToolRunner: TCodeQualityToolRunner);
+constructor TCodeQualityService.Create(AToolRunner: TCodeQualityToolRunner;
+  AAppPaths: TAppPaths);
 begin
   inherited Create;
   FToolRunner := AToolRunner;
+  FAppPaths := AAppPaths;
   FConfiguration := TCodeQualityConfiguration.Create;
 end;
 
@@ -77,6 +91,12 @@ function TCodeQualityService.ProjectPath(const AProjectPath,
   ARelativePath: string): string;
 begin
   Result := IncludeTrailingPathDelimiter(AProjectPath) + ARelativePath;
+end;
+
+function TCodeQualityService.ProjectToolConfigPath(const AProjectPath: string;
+  const ACandidates: array of string): string;
+begin
+  Result := FindFirstExisting(AProjectPath, ACandidates);
 end;
 
 function TCodeQualityService.FindFirstExisting(const AProjectPath: string;
@@ -94,6 +114,98 @@ begin
   end;
 end;
 
+procedure TCodeQualityService.AddToolStatus(AReport: TCodeQualityReport;
+  const AToolName, AToolPath, AOutcome, AStandardError: string;
+  AElapsedMilliseconds: QWord);
+var
+  PHPPath: string;
+begin
+  if not Assigned(AReport) then
+    Exit;
+
+  if (LowerCase(ExtractFileExt(AToolPath)) = '.bat') or
+    (LowerCase(ExtractFileExt(AToolPath)) = '.cmd') then
+    PHPPath := 'System PATH (Composer wrapper)'
+  else
+    PHPPath := FToolRunner.ConfiguredPHPExecutablePath;
+
+  AReport.AddToolStatus(TCodeQualityToolStatus.Create(AToolName, AToolPath,
+    ToolSource(AToolPath), PHPPath, AOutcome, AStandardError,
+    AElapsedMilliseconds));
+end;
+
+function TCodeQualityService.ToolSource(const AToolPath: string): string;
+var
+  StudioToolsPath: string;
+begin
+  if AToolPath = '' then
+    Exit('Not available');
+
+  if Assigned(FAppPaths) then
+  begin
+    StudioToolsPath := IncludeTrailingPathDelimiter(FAppPaths.PHPToolsPath);
+    if SameText(Copy(AToolPath, 1, Length(StudioToolsPath)), StudioToolsPath) then
+      Exit('Studio-bundled');
+  end;
+  Result := 'Project-local';
+end;
+
+procedure TCodeQualityService.AddStudioDefaultRulesWarning(
+  AReport: TCodeQualityReport; const AToolName, AToolPath, AConfigPath: string);
+begin
+  if (AConfigPath <> '') or (ToolSource(AToolPath) <> 'Studio-bundled') or
+    not Assigned(AReport) then
+    Exit;
+
+  AReport.AddFinding(TCodeQualityFinding.Create(
+    AToolName,
+    AReport.ProjectPath,
+    '',
+    0,
+    0,
+    'Configuration',
+    cqsWarning,
+    cqrSafe,
+    'Studio-bundled ' + AToolName +
+      ' ran without a project configuration file; default rules were used.',
+    'Add a project configuration file to make the analysis rules explicit.'));
+end;
+
+function TCodeQualityService.ExecuteAnalysisTool(const AToolPath: string;
+  AArguments: TStrings; const AWorkingDirectory: string;
+  ATimeoutMS: Cardinal; AReport: TCodeQualityReport;
+  const AToolName: string): TProcessResult;
+var
+  ElapsedMilliseconds: QWord;
+  Extension: string;
+  StartTicks: QWord;
+begin
+  StartTicks := GetTickCount64;
+  Extension := LowerCase(ExtractFileExt(AToolPath));
+  if (Extension = '.bat') or (Extension = '.cmd') or (Extension = '.exe') then
+    Result := FToolRunner.ExecuteProcessTool(AToolPath, AArguments,
+      AWorkingDirectory, ATimeoutMS)
+  else
+    Result := FToolRunner.ExecutePHPProcessTool(AToolPath, AArguments,
+      AWorkingDirectory, ATimeoutMS);
+
+  ElapsedMilliseconds := GetTickCount64 - StartTicks;
+  if Result.Success then
+    AddToolStatus(AReport, AToolName, AToolPath, 'Completed',
+      Result.StdErrText, ElapsedMilliseconds)
+  else if Result.TimedOut then
+    AddToolStatus(AReport, AToolName, AToolPath, 'Timed out',
+      Result.StdErrText, ElapsedMilliseconds)
+  else if Trim(Result.StdOutText) <> '' then
+    AddToolStatus(AReport, AToolName, AToolPath,
+      'Completed with findings (exit code ' + IntToStr(Result.ExitCode) + ')',
+      Result.StdErrText, ElapsedMilliseconds)
+  else
+    AddToolStatus(AReport, AToolName, AToolPath,
+      'Failed (exit code ' + IntToStr(Result.ExitCode) + ')',
+      Result.StdErrText, ElapsedMilliseconds);
+end;
+
 function TCodeQualityService.DetectPHPCSFixerPath(
   const AProjectPath: string): string;
 begin
@@ -102,6 +214,10 @@ begin
     'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'php-cs-fixer.cmd',
     'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'php-cs-fixer.exe',
     'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'php-cs-fixer']);
+  if (Result = '') and Assigned(FAppPaths) then
+    Result := FindFirstExisting(FAppPaths.PHPToolsPath, [
+      'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'php-cs-fixer',
+      'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'php-cs-fixer.bat']);
 end;
 
 function TCodeQualityService.DetectPHPCSPath(const AProjectPath: string
@@ -112,6 +228,10 @@ begin
     'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'phpcs.cmd',
     'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'phpcs.exe',
     'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'phpcs']);
+  if (Result = '') and Assigned(FAppPaths) then
+    Result := FindFirstExisting(FAppPaths.PHPToolsPath, [
+      'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'phpcs',
+      'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'phpcs.bat']);
 end;
 
 function TCodeQualityService.DetectPHPStanPath(const AProjectPath: string
@@ -122,6 +242,10 @@ begin
     'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'phpstan.cmd',
     'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'phpstan.exe',
     'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'phpstan']);
+  if (Result = '') and Assigned(FAppPaths) then
+    Result := FindFirstExisting(FAppPaths.PHPToolsPath, [
+      'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'phpstan',
+      'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'phpstan.bat']);
 end;
 
 function TCodeQualityService.DetectRectorPath(const AProjectPath: string
@@ -132,6 +256,10 @@ begin
     'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'rector.cmd',
     'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'rector.exe',
     'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'rector']);
+  if (Result = '') and Assigned(FAppPaths) then
+    Result := FindFirstExisting(FAppPaths.PHPToolsPath, [
+      'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'rector',
+      'vendor' + DirectorySeparator + 'bin' + DirectorySeparator + 'rector.bat']);
 end;
 
 function TCodeQualityService.NormalizeRelativePath(const APath: string): string;
@@ -586,15 +714,25 @@ procedure TCodeQualityService.RunPHPCSFixerDryRun(
 var
   Args: TStringList;
   I: Integer;
+  ConfigPath: string;
   ProcessResult: TProcessResult;
   ToolPath: string;
 begin
   if not FConfiguration.PHPCSFixerEnabled then
+  begin
+    AddToolStatus(AReport, 'PHP-CS-Fixer', '', 'Disabled', '', 0);
     Exit;
+  end;
 
   ToolPath := DetectPHPCSFixerPath(AProject.RootPath);
   if ToolPath = '' then
+  begin
+    AddToolStatus(AReport, 'PHP-CS-Fixer', '', 'Not available', '', 0);
     Exit;
+  end;
+  ConfigPath := ProjectToolConfigPath(AProject.RootPath, [
+    '.php-cs-fixer.php', '.php-cs-fixer.dist.php']);
+  AddStudioDefaultRulesWarning(AReport, 'PHP-CS-Fixer', ToolPath, ConfigPath);
 
   Args := TStringList.Create;
   try
@@ -602,6 +740,8 @@ begin
     Args.Add('--dry-run');
     Args.Add('--format=json');
     Args.Add('--using-cache=no');
+    if ConfigPath <> '' then
+      Args.Add('--config=' + ConfigPath);
     Args.Add('--');
     for I := 0 to FConfiguration.IncludedPaths.Count - 1 do
       if DirectoryExists(ProjectPath(AProject.RootPath,
@@ -611,8 +751,8 @@ begin
     if Args.Count = 5 then
       Args.Add(AProject.RootPath);
 
-    ProcessResult := FToolRunner.ExecuteProcessTool(ToolPath, Args,
-      AProject.RootPath, FConfiguration.TimeoutMS);
+    ProcessResult := ExecuteAnalysisTool(ToolPath, Args,
+      AProject.RootPath, FConfiguration.TimeoutMS, AReport, 'PHP-CS-Fixer');
     try
       if Trim(ProcessResult.StdOutText) <> '' then
         ParsePHPCSFixerOutput(AReport, ProcessResult.StdOutText)
@@ -631,19 +771,31 @@ procedure TCodeQualityService.RunPHPCSAnalysis(AReport: TCodeQualityReport;
 var
   Args: TStringList;
   I: Integer;
+  ConfigPath: string;
   ProcessResult: TProcessResult;
   ToolPath: string;
 begin
   if not FConfiguration.PHPCSEnabled then
+  begin
+    AddToolStatus(AReport, 'PHPCS', '', 'Disabled', '', 0);
     Exit;
+  end;
 
   ToolPath := DetectPHPCSPath(AProject.RootPath);
   if ToolPath = '' then
+  begin
+    AddToolStatus(AReport, 'PHPCS', '', 'Not available', '', 0);
     Exit;
+  end;
+  ConfigPath := ProjectToolConfigPath(AProject.RootPath, [
+    'phpcs.xml', 'phpcs.xml.dist']);
+  AddStudioDefaultRulesWarning(AReport, 'PHPCS', ToolPath, ConfigPath);
 
   Args := TStringList.Create;
   try
     Args.Add('--report=json');
+    if ConfigPath <> '' then
+      Args.Add('--standard=' + ConfigPath);
     for I := 0 to FConfiguration.IncludedPaths.Count - 1 do
       if DirectoryExists(ProjectPath(AProject.RootPath,
         FConfiguration.IncludedPaths[I])) then
@@ -652,8 +804,8 @@ begin
     if Args.Count = 1 then
       Args.Add(AProject.RootPath);
 
-    ProcessResult := FToolRunner.ExecuteProcessTool(ToolPath, Args,
-      AProject.RootPath, FConfiguration.TimeoutMS);
+    ProcessResult := ExecuteAnalysisTool(ToolPath, Args,
+      AProject.RootPath, FConfiguration.TimeoutMS, AReport, 'PHPCS');
     try
       if Trim(ProcessResult.StdOutText) <> '' then
         ParsePHPCSOutput(AReport, ProcessResult.StdOutText)
@@ -672,21 +824,33 @@ procedure TCodeQualityService.RunPHPStanAnalysis(AReport: TCodeQualityReport;
 var
   Args: TStringList;
   I: Integer;
+  ConfigPath: string;
   ProcessResult: TProcessResult;
   ToolPath: string;
 begin
   if not FConfiguration.PHPStanEnabled then
+  begin
+    AddToolStatus(AReport, 'PHPStan', '', 'Disabled', '', 0);
     Exit;
+  end;
 
   ToolPath := DetectPHPStanPath(AProject.RootPath);
   if ToolPath = '' then
+  begin
+    AddToolStatus(AReport, 'PHPStan', '', 'Not available', '', 0);
     Exit;
+  end;
+  ConfigPath := ProjectToolConfigPath(AProject.RootPath, [
+    'phpstan.neon', 'phpstan.neon.dist']);
+  AddStudioDefaultRulesWarning(AReport, 'PHPStan', ToolPath, ConfigPath);
 
   Args := TStringList.Create;
   try
     Args.Add('analyse');
     Args.Add('--error-format=json');
     Args.Add('--no-progress');
+    if ConfigPath <> '' then
+      Args.Add('--configuration=' + ConfigPath);
     for I := 0 to FConfiguration.IncludedPaths.Count - 1 do
       if DirectoryExists(ProjectPath(AProject.RootPath,
         FConfiguration.IncludedPaths[I])) then
@@ -695,8 +859,8 @@ begin
     if Args.Count = 3 then
       Args.Add(AProject.RootPath);
 
-    ProcessResult := FToolRunner.ExecuteProcessTool(ToolPath, Args,
-      AProject.RootPath, FConfiguration.TimeoutMS);
+    ProcessResult := ExecuteAnalysisTool(ToolPath, Args,
+      AProject.RootPath, FConfiguration.TimeoutMS, AReport, 'PHPStan');
     try
       if Trim(ProcessResult.StdOutText) <> '' then
         ParsePHPStanOutput(AReport, ProcessResult.StdOutText)
@@ -829,7 +993,7 @@ begin
     cqsInfo,
     cqrSafe,
     'Code Quality service layer is available.',
-    'Tool detection is read-only and checks project-local Composer binaries and common configuration files.'));
+    'Tool detection is read-only and checks project-local Composer binaries first, then Studio-bundled tools.'));
 
   AddConfigurationFinding(Result);
   AddToolDetectionFindings(Result, AProject);

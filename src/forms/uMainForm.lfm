@@ -1,22 +1,23 @@
 object MainForm: TMainForm
   Left = 300
-  Height = 700
+  Height = 0
   Top = 180
-  Width = 1050
+  Width = 0
   Caption = 'TAFRA Studio'
-  ClientHeight = 700
-  ClientWidth = 1050
+  ClientHeight = 0
+  ClientWidth = 0
+  DesignTimePPI = 120
+  Font.Height = -15
   Menu = MainMenu
+  Position = poScreenCenter
+  LCLVersion = '4.8.0.0'
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  Position = poScreenCenter
-  LCLVersion = '4.8'
   object ToolBar: TToolBar
     Left = 0
     Height = 30
     Top = 0
     Width = 1050
-    Align = alTop
     Caption = 'ToolBar'
     EdgeBorders = [ebTop, ebBottom]
     ShowCaptions = True
@@ -27,9 +28,7 @@ object MainForm: TMainForm
     Height = 23
     Top = 677
     Width = 1050
-    Align = alBottom
     Panels = <>
-    SimplePanel = True
   end
   object ContentPanel: TPanel
     Left = 0
@@ -38,7 +37,8 @@ object MainForm: TMainForm
     Width = 1050
     Align = alClient
     BevelOuter = bvNone
-    Caption = ''
+    ClientHeight = 647
+    ClientWidth = 1050
     TabOrder = 1
     object OutputPanel: TPanel
       Left = 0
@@ -47,6 +47,8 @@ object MainForm: TMainForm
       Width = 1050
       Align = alBottom
       Caption = 'Output / Log'
+      ClientHeight = 150
+      ClientWidth = 1050
       TabOrder = 0
       object OutputMemo: TMemo
         Left = 1
@@ -61,6 +63,7 @@ object MainForm: TMainForm
       end
     end
     object OutputSplitter: TSplitter
+      Cursor = crVSplit
       Left = 0
       Height = 5
       Top = 492
@@ -75,6 +78,8 @@ object MainForm: TMainForm
       Width = 250
       Align = alLeft
       Caption = 'Project Explorer'
+      ClientHeight = 492
+      ClientWidth = 250
       TabOrder = 1
       object ProjectExplorerActionsPanel: TPanel
         Left = 1
@@ -83,7 +88,8 @@ object MainForm: TMainForm
         Width = 248
         Align = alTop
         BevelOuter = bvNone
-        Caption = ''
+        ClientHeight = 30
+        ClientWidth = 248
         TabOrder = 0
         object ExpandAllProjectButton: TButton
           Left = 4
@@ -91,8 +97,8 @@ object MainForm: TMainForm
           Top = 3
           Width = 86
           Caption = 'Expand All'
-          OnClick = ExpandAllProjectButtonClick
           TabOrder = 0
+          OnClick = ExpandAllProjectButtonClick
         end
         object CollapseAllProjectButton: TButton
           Left = 94
@@ -100,8 +106,8 @@ object MainForm: TMainForm
           Top = 3
           Width = 88
           Caption = 'Collapse All'
-          OnClick = CollapseAllProjectButtonClick
           TabOrder = 1
+          OnClick = CollapseAllProjectButtonClick
         end
       end
       object ProjectTreeView: TTreeView
@@ -111,11 +117,12 @@ object MainForm: TMainForm
         Width = 248
         Align = alClient
         HideSelection = False
+        TabOrder = 1
+        Options = [tvoAutoItemHeight, tvoKeepCollapsedNodes, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips, tvoThemedDraw]
         OnChange = ProjectTreeViewChange
         OnCustomDraw = ProjectTreeViewCustomDraw
         OnCustomDrawItem = ProjectTreeViewCustomDrawItem
         OnMouseDown = ProjectTreeViewMouseDown
-        TabOrder = 1
       end
     end
     object ExplorerSplitter: TSplitter
@@ -123,7 +130,6 @@ object MainForm: TMainForm
       Height = 492
       Top = 0
       Width = 5
-      ResizeAnchor = akLeft
     end
     object WorkspacePanel: TPanel
       Left = 255
@@ -136,8 +142,8 @@ object MainForm: TMainForm
     end
   end
   object MainMenu: TMainMenu
-    left = 24
-    top = 48
+    Left = 30
+    Top = 60
     object FileMenuItem: TMenuItem
       Caption = '&File'
       object OpenProjectMenuItem: TMenuItem
@@ -181,6 +187,10 @@ object MainForm: TMainForm
     end
     object ToolsMenuItem: TMenuItem
       Caption = '&Tools'
+      object GzipBase64DecoderMenuItem: TMenuItem
+        Caption = '&Gzip + Base64 Decoder...'
+        OnClick = GzipBase64DecoderMenuItemClick
+      end
       object PasswordGeneratorMenuItem: TMenuItem
         Caption = '&Password Generator...'
         OnClick = PasswordGeneratorMenuItemClick
@@ -203,7 +213,7 @@ object MainForm: TMainForm
   end
   object SelectDirectoryDialog: TSelectDirectoryDialog
     Title = 'Select TAFRA Project Directory'
-    left = 120
-    top = 48
+    Left = 150
+    Top = 60
   end
 end

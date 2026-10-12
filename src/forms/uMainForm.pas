@@ -11,9 +11,10 @@ uses
   uProjectAnalyzer, uTAFRAFrameworkRules, uProjectExplorerPresenter,
   uModuleManagementService, uSettingsForm, uSourceFileService, uResultTypes,
   uProjectModel, uCodeQualityModel, uThemeService, uPasswordGeneratorForm,
+  uGzipBase64DecoderForm,
   uCodeQualityService, uCodeQualityToolRunner, SynEdit, SynHighlighterPHP,
   uFlowchartService, SynHighlighterJScript, SynHighlighterCss, SynHighlighterHtml,
-  SynHighlighterSQL;
+  SynHighlighterSQL, uCodeQualityReportExporter;
 
 type
 
@@ -34,6 +35,7 @@ type
     OutputMenuItem: TMenuItem;
     OutputPanel: TPanel;
     OutputSplitter: TSplitter;
+    GzipBase64DecoderMenuItem: TMenuItem;
     PasswordGeneratorMenuItem: TMenuItem;
     ProjectMenuItem: TMenuItem;
     ProjectExplorerActionsPanel: TPanel;
@@ -61,6 +63,7 @@ type
     procedure ApplicationSettingsMenuItemClick(Sender: TObject);
     procedure OpenProjectMenuItemClick(Sender: TObject);
     procedure OutputMenuItemClick(Sender: TObject);
+    procedure GzipBase64DecoderMenuItemClick(Sender: TObject);
     procedure PasswordGeneratorMenuItemClick(Sender: TObject);
     procedure ProjectExplorerMenuItemClick(Sender: TObject);
     procedure ProjectTreePopupMenuPopup(Sender: TObject);
@@ -124,14 +127,18 @@ type
     FSQLHighlighter: TSynSQLSyn;
     FCodeQualityMenuItem: TMenuItem;
     FAnalyzeCodeQualityMenuItem: TMenuItem;
+    FExportCodeQualityReportMenuItem: TMenuItem;
+    FCodeQualityToolStatusMenuItem: TMenuItem;
     FCodeIntelligenceMenuItem: TMenuItem;
     FGenerateFlowchartMenuItem: TMenuItem;
+    FLastCodeQualityReport: TCodeQualityReport;
     FCurrentSourceFilePath: string;
     function AddModuleManagementMenuItem(AOwnerMenu: TMenuItem;
       AAction: TModuleManagementAction): TMenuItem;
     function AddModuleManagementPopupItem(AAction: TModuleManagementAction
       ): TMenuItem;
     procedure AnalyzeCurrentProject;
+    procedure ClearLastCodeQualityReport;
     procedure CreateAnalyzerMenu;
     procedure CreateCodeQualityMenu;
     procedure CreateCodeIntelligenceMenu;
@@ -144,6 +151,8 @@ type
       const AMessage: string);
     procedure ModuleManagementMenuItemClick(Sender: TObject);
     procedure AnalyzeCodeQualityMenuItemClick(Sender: TObject);
+    procedure ExportCodeQualityReportMenuItemClick(Sender: TObject);
+    procedure CodeQualityToolStatusMenuItemClick(Sender: TObject);
     procedure GenerateFlowchartMenuItemClick(Sender: TObject);
     procedure LogProjectIssues(AProject: TTAFRAProject);
     procedure LoadApplicationIcon;
@@ -209,7 +218,8 @@ begin
     FSettingsService);
   FCodeQualityToolRunner := TCodeQualityToolRunner.Create(FProcessRunner,
     FPHPToolRunner);
-  FCodeQualityService := TCodeQualityService.Create(FCodeQualityToolRunner);
+  FCodeQualityService := TCodeQualityService.Create(FCodeQualityToolRunner,
+    FAppPaths);
   FFlowchartService := TFlowchartService.Create(FAppPaths, FPHPToolRunner);
   FFrameworkRules := TTAFRAFrameworkRules.Create;
   FProjectScanner := TProjectScanner.Create(FFrameworkRules);
@@ -235,6 +245,7 @@ end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
+  ClearLastCodeQualityReport;
   FProjectExplorerPresenter.Render(ProjectTreeView, nil);
   FProjectExplorerPresenter.Free;
   FProjectSession.Free;
@@ -285,6 +296,7 @@ begin
   try
     if ResultInfo.Success then
     begin
+      ClearLastCodeQualityReport;
       FLogger.Info(ResultInfo.MessageText);
       AnalyzeCurrentProject;
       RefreshProjectExplorer;
@@ -305,6 +317,7 @@ var
 begin
   ResultInfo := FProjectSession.CloseProject;
   try
+    ClearLastCodeQualityReport;
     FLogger.Info(ResultInfo.MessageText);
     RefreshProjectExplorer;
     RefreshAnalyzerView;
@@ -498,6 +511,19 @@ begin
   OutputSplitter.Visible := OutputMenuItem.Checked;
 end;
 
+procedure TMainForm.GzipBase64DecoderMenuItemClick(Sender: TObject);
+var
+  DecoderForm: TGzipBase64DecoderForm;
+begin
+  DecoderForm := TGzipBase64DecoderForm.Create(Self, FThemeService,
+    FSettingsService.Settings.ThemeName);
+  try
+    DecoderForm.ShowModal;
+  finally
+    DecoderForm.Free;
+  end;
+end;
+
 procedure TMainForm.PasswordGeneratorMenuItemClick(Sender: TObject);
 var
   PasswordGeneratorForm: TPasswordGeneratorForm;
@@ -673,6 +699,28 @@ begin
   FAnalyzeCodeQualityMenuItem.Enabled := False;
   FAnalyzeCodeQualityMenuItem.OnClick := @AnalyzeCodeQualityMenuItemClick;
   FCodeQualityMenuItem.Add(FAnalyzeCodeQualityMenuItem);
+
+  FExportCodeQualityReportMenuItem := TMenuItem.Create(MainMenu);
+  FExportCodeQualityReportMenuItem.Caption := '&Export Last Report...';
+  FExportCodeQualityReportMenuItem.Enabled := False;
+  FExportCodeQualityReportMenuItem.OnClick :=
+    @ExportCodeQualityReportMenuItemClick;
+  FCodeQualityMenuItem.Add(FExportCodeQualityReportMenuItem);
+
+  FCodeQualityToolStatusMenuItem := TMenuItem.Create(MainMenu);
+  FCodeQualityToolStatusMenuItem.Caption := 'Tool &Status...';
+  FCodeQualityToolStatusMenuItem.Enabled := False;
+  FCodeQualityToolStatusMenuItem.OnClick := @CodeQualityToolStatusMenuItemClick;
+  FCodeQualityMenuItem.Add(FCodeQualityToolStatusMenuItem);
+end;
+
+procedure TMainForm.ClearLastCodeQualityReport;
+begin
+  FreeAndNil(FLastCodeQualityReport);
+  if Assigned(FExportCodeQualityReportMenuItem) then
+    FExportCodeQualityReportMenuItem.Enabled := False;
+  if Assigned(FCodeQualityToolStatusMenuItem) then
+    FCodeQualityToolStatusMenuItem.Enabled := False;
 end;
 
 procedure TMainForm.CreateCodeIntelligenceMenu;
@@ -886,26 +934,163 @@ begin
 
   Report := FCodeQualityService.AnalyzeProject(FProjectSession.CurrentProject);
   try
+    ClearLastCodeQualityReport;
+    FLastCodeQualityReport := Report;
+    Report := nil;
+    FExportCodeQualityReportMenuItem.Enabled := True;
+    FCodeQualityToolStatusMenuItem.Enabled := True;
+
     FLogger.Info('Code Quality foundation report created for: ' +
-      Report.ProjectPath);
-    for I := 0 to Report.Findings.Count - 1 do
+      FLastCodeQualityReport.ProjectPath);
+    for I := 0 to FLastCodeQualityReport.Findings.Count - 1 do
     begin
-      Finding := TCodeQualityFinding(Report.Findings[I]);
+      Finding := TCodeQualityFinding(FLastCodeQualityReport.Findings[I]);
       FLogger.Info('Code Quality [' +
         CodeQualitySeverityToString(Finding.Severity) + '] ' +
         Finding.ToolName + ': ' + Finding.MessageText);
     end;
 
     ShowMessage('Code Quality service is ready.' + LineEnding + LineEnding +
-      'Project: ' + Report.ProjectPath + LineEnding +
-      'Findings: ' + IntToStr(Report.Findings.Count) + LineEnding +
-      'Critical: ' + IntToStr(Report.CountBySeverity(cqsCritical)) +
+      'Project: ' + FLastCodeQualityReport.ProjectPath + LineEnding +
+      'Findings: ' + IntToStr(FLastCodeQualityReport.Findings.Count) + LineEnding +
+      'Critical: ' + IntToStr(FLastCodeQualityReport.CountBySeverity(cqsCritical)) +
       LineEnding +
-      'Warnings: ' + IntToStr(Report.CountBySeverity(cqsWarning)) +
+      'Warnings: ' + IntToStr(FLastCodeQualityReport.CountBySeverity(cqsWarning)) +
       LineEnding +
-      'Info: ' + IntToStr(Report.CountBySeverity(cqsInfo)));
+      'Info: ' + IntToStr(FLastCodeQualityReport.CountBySeverity(cqsInfo)));
   finally
     Report.Free;
+  end;
+end;
+
+procedure TMainForm.CodeQualityToolStatusMenuItemClick(Sender: TObject);
+var
+  CloseButton: TButton;
+  DetailsMemo: TMemo;
+  I: Integer;
+  Status: TCodeQualityToolStatus;
+  StatusForm: TForm;
+begin
+  if not Assigned(FLastCodeQualityReport) then
+    Exit;
+
+  StatusForm := TForm.Create(Self);
+  try
+    StatusForm.Caption := 'Code Quality Tool Status';
+    StatusForm.BorderStyle := bsSizeable;
+    StatusForm.Position := poOwnerFormCenter;
+    StatusForm.Width := 780;
+    StatusForm.Height := 520;
+    StatusForm.Constraints.MinWidth := 560;
+    StatusForm.Constraints.MinHeight := 360;
+
+    DetailsMemo := TMemo.Create(StatusForm);
+    DetailsMemo.Parent := StatusForm;
+    DetailsMemo.Left := 16;
+    DetailsMemo.Top := 16;
+    DetailsMemo.Width := 732;
+    DetailsMemo.Height := 410;
+    DetailsMemo.Anchors := [akLeft, akTop, akRight, akBottom];
+    DetailsMemo.ReadOnly := True;
+    DetailsMemo.ScrollBars := ssBoth;
+    DetailsMemo.WordWrap := False;
+
+    if FLastCodeQualityReport.ToolStatuses.Count = 0 then
+      DetailsMemo.Lines.Add('No external code-quality tools were run.')
+    else
+      for I := 0 to FLastCodeQualityReport.ToolStatuses.Count - 1 do
+      begin
+        Status := TCodeQualityToolStatus(FLastCodeQualityReport.ToolStatuses[I]);
+        DetailsMemo.Lines.Add(Status.ToolName + ' — ' + Status.Outcome);
+        DetailsMemo.Lines.Add('  Source: ' + Status.ToolSource);
+        DetailsMemo.Lines.Add('  Tool: ' + Status.ToolPath);
+        DetailsMemo.Lines.Add('  PHP runtime: ' + Status.PHPRuntimePath);
+        DetailsMemo.Lines.Add('  Elapsed: ' + IntToStr(Status.ElapsedMilliseconds) + ' ms');
+        if Trim(Status.StandardError) <> '' then
+          DetailsMemo.Lines.Add('  Stderr: ' + Trim(Status.StandardError));
+        DetailsMemo.Lines.Add('');
+      end;
+
+    CloseButton := TButton.Create(StatusForm);
+    CloseButton.Parent := StatusForm;
+    CloseButton.Left := 648;
+    CloseButton.Top := 442;
+    CloseButton.Width := 100;
+    CloseButton.Anchors := [akRight, akBottom];
+    CloseButton.Caption := 'Close';
+    CloseButton.ModalResult := mrClose;
+
+    if Assigned(FThemeService) and Assigned(FSettingsService) then
+      FThemeService.ApplyTheme(StatusForm, FSettingsService.Settings.ThemeName);
+    StatusForm.ShowModal;
+  finally
+    StatusForm.Free;
+  end;
+end;
+
+procedure TMainForm.ExportCodeQualityReportMenuItemClick(Sender: TObject);
+var
+  Exporter: TCodeQualityReportExporter;
+  ExportFormat: TCodeQualityReportFormat;
+  Extension: string;
+  ResultInfo: TOperationResult;
+  SaveDialog: TSaveDialog;
+begin
+  if not Assigned(FLastCodeQualityReport) then
+  begin
+    ShowMessage('Run Code Quality before exporting a report.');
+    Exit;
+  end;
+
+  SaveDialog := TSaveDialog.Create(Self);
+  try
+    SaveDialog.Filter := 'JSON files (*.json)|*.json|CSV files (*.csv)|*.csv|HTML files (*.html)|*.html';
+    SaveDialog.FilterIndex := 1;
+    SaveDialog.DefaultExt := 'json';
+    SaveDialog.FileName := 'code-quality-report-' +
+      FormatDateTime('yyyymmdd-hhnnss', FLastCodeQualityReport.GeneratedAt);
+    SaveDialog.Options := SaveDialog.Options + [ofOverwritePrompt];
+    if not SaveDialog.Execute then
+      Exit;
+
+    case SaveDialog.FilterIndex of
+      2:
+        begin
+          ExportFormat := cqrfCsv;
+          Extension := '.csv';
+        end;
+      3:
+        begin
+          ExportFormat := cqrfHtml;
+          Extension := '.html';
+        end;
+    else
+      begin
+        ExportFormat := cqrfJson;
+        Extension := '.json';
+      end;
+    end;
+
+    if ExtractFileExt(SaveDialog.FileName) = '' then
+      SaveDialog.FileName := SaveDialog.FileName + Extension;
+
+    Exporter := TCodeQualityReportExporter.Create;
+    try
+      ResultInfo := Exporter.SaveReport(FLastCodeQualityReport,
+        SaveDialog.FileName, ExportFormat);
+      try
+        if ResultInfo.Success then
+          FLogger.Info(ResultInfo.MessageText)
+        else
+          ShowMessage(ResultInfo.MessageText);
+      finally
+        ResultInfo.Free;
+      end;
+    finally
+      Exporter.Free;
+    end;
+  finally
+    SaveDialog.Free;
   end;
 end;
 
@@ -1584,6 +1769,12 @@ begin
     FCodeQualityMenuItem.Enabled := CurrentProjectPath <> '';
   if Assigned(FAnalyzeCodeQualityMenuItem) then
     FAnalyzeCodeQualityMenuItem.Enabled := CurrentProjectPath <> '';
+  if Assigned(FExportCodeQualityReportMenuItem) then
+    FExportCodeQualityReportMenuItem.Enabled := (CurrentProjectPath <> '') and
+      Assigned(FLastCodeQualityReport);
+  if Assigned(FCodeQualityToolStatusMenuItem) then
+    FCodeQualityToolStatusMenuItem.Enabled := (CurrentProjectPath <> '') and
+      Assigned(FLastCodeQualityReport);
   if Assigned(FCodeIntelligenceMenuItem) then
     FCodeIntelligenceMenuItem.Enabled := CurrentProjectPath <> '';
   if Assigned(FGenerateFlowchartMenuItem) then

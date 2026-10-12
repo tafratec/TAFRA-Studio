@@ -20,6 +20,9 @@ type
       ATimeoutMS: Cardinal): TProcessResult;
     function ExecutePHPTool(const AToolPath: string; AArguments: TStrings;
       const AWorkingDirectory: string): TPHPToolResult;
+    function ExecutePHPProcessTool(const AToolPath: string; AArguments: TStrings;
+      const AWorkingDirectory: string; ATimeoutMS: Cardinal): TProcessResult;
+    function ConfiguredPHPExecutablePath: string;
     property ProcessRunner: TProcessRunner read FProcessRunner;
     property PHPToolRunner: TPHPToolRunner read FPHPToolRunner;
   end;
@@ -65,6 +68,31 @@ begin
 
   Result := FPHPToolRunner.ExecuteTool(AToolPath, AArguments,
     AWorkingDirectory);
+end;
+
+function TCodeQualityToolRunner.ExecutePHPProcessTool(
+  const AToolPath: string; AArguments: TStrings;
+  const AWorkingDirectory: string; ATimeoutMS: Cardinal): TProcessResult;
+begin
+  if not Assigned(FPHPToolRunner) then
+  begin
+    Result := TProcessResult.Create;
+    Result.Success := False;
+    Result.ErrorCode := 'PHP_TOOL_RUNNER_MISSING';
+    Result.MessageText := 'PHP tool runner is not available.';
+    Exit;
+  end;
+
+  Result := FPHPToolRunner.ExecuteScript(AToolPath, AArguments,
+    AWorkingDirectory, ATimeoutMS);
+end;
+
+function TCodeQualityToolRunner.ConfiguredPHPExecutablePath: string;
+begin
+  if Assigned(FPHPToolRunner) then
+    Result := FPHPToolRunner.ConfiguredPHPExecutablePath
+  else
+    Result := '';
 end;
 
 end.

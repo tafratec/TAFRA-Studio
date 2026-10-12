@@ -50,6 +50,28 @@ type
     property Recommendation: string read FRecommendation;
   end;
 
+  TCodeQualityToolStatus = class
+  private
+    FToolName: string;
+    FToolPath: string;
+    FToolSource: string;
+    FPHPRuntimePath: string;
+    FOutcome: string;
+    FElapsedMilliseconds: QWord;
+    FStandardError: string;
+  public
+    constructor Create(const AToolName, AToolPath, AToolSource,
+      APHPRuntimePath, AOutcome, AStandardError: string;
+      AElapsedMilliseconds: QWord);
+    property ToolName: string read FToolName;
+    property ToolPath: string read FToolPath;
+    property ToolSource: string read FToolSource;
+    property PHPRuntimePath: string read FPHPRuntimePath;
+    property Outcome: string read FOutcome;
+    property ElapsedMilliseconds: QWord read FElapsedMilliseconds;
+    property StandardError: string read FStandardError;
+  end;
+
   TCodeQualityConfiguration = class
   private
     FIncludedPaths: TStringList;
@@ -77,16 +99,19 @@ type
   private
     FProjectPath: string;
     FFindings: TList;
+    FToolStatuses: TList;
     FGeneratedAt: TDateTime;
   public
     constructor Create(const AProjectPath: string);
     destructor Destroy; override;
     function AddFinding(AFinding: TCodeQualityFinding): TCodeQualityFinding;
+    function AddToolStatus(AStatus: TCodeQualityToolStatus): TCodeQualityToolStatus;
     procedure Clear;
     function CountBySeverity(ASeverity: TCodeQualitySeverity): Integer;
     function CountByRisk(ARisk: TCodeQualityRisk): Integer;
     property ProjectPath: string read FProjectPath;
     property Findings: TList read FFindings;
+    property ToolStatuses: TList read FToolStatuses;
     property GeneratedAt: TDateTime read FGeneratedAt write FGeneratedAt;
   end;
 
@@ -115,6 +140,20 @@ begin
   FRisk := ARisk;
   FMessageText := AMessageText;
   FRecommendation := ARecommendation;
+end;
+
+constructor TCodeQualityToolStatus.Create(const AToolName, AToolPath,
+  AToolSource, APHPRuntimePath, AOutcome, AStandardError: string;
+  AElapsedMilliseconds: QWord);
+begin
+  inherited Create;
+  FToolName := AToolName;
+  FToolPath := AToolPath;
+  FToolSource := AToolSource;
+  FPHPRuntimePath := APHPRuntimePath;
+  FOutcome := AOutcome;
+  FElapsedMilliseconds := AElapsedMilliseconds;
+  FStandardError := AStandardError;
 end;
 
 constructor TCodeQualityConfiguration.Create;
@@ -167,6 +206,7 @@ begin
   inherited Create;
   FProjectPath := AProjectPath;
   FFindings := TList.Create;
+  FToolStatuses := TList.Create;
   FGeneratedAt := Now;
 end;
 
@@ -174,6 +214,7 @@ destructor TCodeQualityReport.Destroy;
 begin
   Clear;
   FFindings.Free;
+  FToolStatuses.Free;
   inherited Destroy;
 end;
 
@@ -184,6 +225,13 @@ begin
   Result := AFinding;
 end;
 
+function TCodeQualityReport.AddToolStatus(
+  AStatus: TCodeQualityToolStatus): TCodeQualityToolStatus;
+begin
+  FToolStatuses.Add(AStatus);
+  Result := AStatus;
+end;
+
 procedure TCodeQualityReport.Clear;
 var
   I: Integer;
@@ -191,6 +239,9 @@ begin
   for I := 0 to FFindings.Count - 1 do
     TObject(FFindings[I]).Free;
   FFindings.Clear;
+  for I := 0 to FToolStatuses.Count - 1 do
+    TObject(FToolStatuses[I]).Free;
+  FToolStatuses.Clear;
 end;
 
 function TCodeQualityReport.CountBySeverity(

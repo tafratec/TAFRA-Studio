@@ -18,6 +18,9 @@ type
   public
     constructor Create(AAppPaths: TAppPaths; AProcessRunner: TProcessRunner;
       ASettingsService: TSettingsService = nil);
+    function ExecuteScript(const AScriptPath: string; AArguments: TStrings;
+      const AWorkingDirectory: string; ATimeoutMS: Cardinal): TProcessResult;
+    function ConfiguredPHPExecutablePath: string;
     function ExecuteTool(const AToolPath: string; AArguments: TStrings;
       const AWorkingDirectory: string = ''): TPHPToolResult;
     function ExecuteHealthCheck: TPHPToolResult;
@@ -144,6 +147,31 @@ begin
   finally
     Args.Free;
   end;
+end;
+
+function TPHPToolRunner.ExecuteScript(const AScriptPath: string;
+  AArguments: TStrings; const AWorkingDirectory: string;
+  ATimeoutMS: Cardinal): TProcessResult;
+var
+  Args: TStringList;
+  I: Integer;
+begin
+  Args := TStringList.Create;
+  try
+    Args.Add(AScriptPath);
+    if Assigned(AArguments) then
+      for I := 0 to AArguments.Count - 1 do
+        Args.Add(AArguments[I]);
+    Result := FProcessRunner.Execute(PHPExecutablePath, Args, AWorkingDirectory,
+      ATimeoutMS);
+  finally
+    Args.Free;
+  end;
+end;
+
+function TPHPToolRunner.ConfiguredPHPExecutablePath: string;
+begin
+  Result := PHPExecutablePath;
 end;
 
 function TPHPToolRunner.ExecuteHealthCheck: TPHPToolResult;

@@ -2,16 +2,13 @@
 <CONFIG>
   <ProjectOptions>
     <Version Value="12"/>
-    <PathDelim Value="\\"/>
+    <PathDelim Value="\"/>
     <General>
       <Flags>
         <MainUnitHasUsesSectionForAllUnits Value="False"/>
-        <MainUnitHasCreateFormStatements Value="True"/>
-        <MainUnitHasTitleStatement Value="True"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
       <Title Value="TAFRA Studio"/>
-      <MainUnit Value="0"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
     </General>
@@ -24,14 +21,14 @@
     <RunParams>
       <FormatVersion Value="2"/>
     </RunParams>
-    <RequiredPackages Count="2">
-      <Item1>
+    <RequiredPackages>
+      <Item>
         <PackageName Value="LCL"/>
-      </Item1>
-      <Item2>
+      </Item>
+      <Item>
         <PackageName Value="SynEdit"/>
         <MinVersion Major="1" Valid="True"/>
-      </Item2>
+      </Item>
     </RequiredPackages>
     <Units>
       <Unit>
@@ -39,141 +36,131 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="src/forms/uMainForm.pas"/>
+        <Filename Value="src\forms\uMainForm.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uMainForm"/>
+        <ComponentName Value="MainForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
       </Unit>
       <Unit>
-        <Filename Value="src/forms/uSettingsForm.pas"/>
+        <Filename Value="src\forms\uSettingsForm.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uSettingsForm"/>
       </Unit>
       <Unit>
-        <Filename Value="src/forms/uPasswordGeneratorForm.pas"/>
+        <Filename Value="src\forms\uPasswordGeneratorForm.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uPasswordGeneratorForm"/>
       </Unit>
       <Unit>
-        <Filename Value="src/core/uResultTypes.pas"/>
+        <Filename Value="src\forms\uGzipBase64DecoderForm.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uResultTypes"/>
       </Unit>
       <Unit>
-        <Filename Value="src/core/uAppPaths.pas"/>
+        <Filename Value="src\core\uResultTypes.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uAppPaths"/>
       </Unit>
       <Unit>
-        <Filename Value="src/core/uLogger.pas"/>
+        <Filename Value="src\core\uAppPaths.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uLogger"/>
       </Unit>
       <Unit>
-        <Filename Value="src/services/uProcessRunner.pas"/>
+        <Filename Value="src\core\uLogger.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uProcessRunner"/>
       </Unit>
       <Unit>
-        <Filename Value="src/services/uPHPToolRunner.pas"/>
+        <Filename Value="src\services\uProcessRunner.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uPHPToolRunner"/>
       </Unit>
       <Unit>
-        <Filename Value="src/services/uSettingsService.pas"/>
+        <Filename Value="src\services\uPHPToolRunner.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uSettingsService"/>
       </Unit>
       <Unit>
-        <Filename Value="src/services/uComposerRunner.pas"/>
+        <Filename Value="src\services\uSettingsService.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uComposerRunner"/>
       </Unit>
       <Unit>
-        <Filename Value="src/services/uSourceFileService.pas"/>
+        <Filename Value="src\services\uComposerRunner.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uSourceFileService"/>
       </Unit>
       <Unit>
-        <Filename Value="src/services/uThemeService.pas"/>
+        <Filename Value="src\services\uSourceFileService.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uThemeService"/>
       </Unit>
       <Unit>
-        <Filename Value="src/services/uPasswordGeneratorService.pas"/>
+        <Filename Value="src\services\uThemeService.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uPasswordGeneratorService"/>
       </Unit>
       <Unit>
-        <Filename Value="src/services/uCodeQualityToolRunner.pas"/>
+        <Filename Value="src\services\uPasswordGeneratorService.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uCodeQualityToolRunner"/>
       </Unit>
       <Unit>
-        <Filename Value="src/services/uCodeQualityService.pas"/>
+        <Filename Value="src\services\uGzipBase64DecoderService.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uCodeQualityService"/>
       </Unit>
       <Unit>
-        <Filename Value="src/services/uFlowchartService.pas"/>
+        <Filename Value="src\services\uCodeQualityToolRunner.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uFlowchartService"/>
       </Unit>
       <Unit>
-        <Filename Value="src/models/uProjectModel.pas"/>
+        <Filename Value="src\services\uCodeQualityService.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uProjectModel"/>
       </Unit>
       <Unit>
-        <Filename Value="src/models/uStudioSettings.pas"/>
+        <Filename Value="src\services\uCodeQualityReportExporter.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uStudioSettings"/>
       </Unit>
       <Unit>
-        <Filename Value="src/models/uCodeQualityModel.pas"/>
+        <Filename Value="src\services\uFlowchartService.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uCodeQualityModel"/>
       </Unit>
       <Unit>
-        <Filename Value="src/framework/uTAFRAFrameworkRules.pas"/>
+        <Filename Value="src\models\uProjectModel.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uTAFRAFrameworkRules"/>
       </Unit>
       <Unit>
-        <Filename Value="src/services/uProjectScanner.pas"/>
+        <Filename Value="src\models\uStudioSettings.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uProjectScanner"/>
       </Unit>
       <Unit>
-        <Filename Value="src/services/uProjectSession.pas"/>
+        <Filename Value="src\models\uCodeQualityModel.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uProjectSession"/>
       </Unit>
       <Unit>
-        <Filename Value="src/services/uProjectAnalyzer.pas"/>
+        <Filename Value="src\framework\uTAFRAFrameworkRules.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uProjectAnalyzer"/>
       </Unit>
       <Unit>
-        <Filename Value="src/services/uModuleManagementService.pas"/>
+        <Filename Value="src\services\uProjectScanner.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uModuleManagementService"/>
       </Unit>
       <Unit>
-        <Filename Value="src/ui/uProjectExplorerPresenter.pas"/>
+        <Filename Value="src\services\uProjectSession.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="uProjectExplorerPresenter"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\services\uProjectAnalyzer.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\services\uModuleManagementService.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\ui\uProjectExplorerPresenter.pas"/>
+        <IsPartOfProject Value="True"/>
       </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
     <Version Value="11"/>
-    <PathDelim Value="\\"/>
+    <PathDelim Value="\"/>
     <Target>
       <Filename Value="tafrastudio"/>
     </Target>
     <SearchPaths>
-      <OtherUnitFiles Value="src\\forms;src\\core;src\\services;src\\models;src\\framework;src\\ui;src\\utils"/>
-      <UnitOutputDirectory Value="lib\\$(TargetCPU)-$(TargetOS)"/>
+      <OtherUnitFiles Value="src\forms;src\core;src\services;src\models;src\framework;src\ui;src\utils"/>
+      <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>
       <Debugging>
