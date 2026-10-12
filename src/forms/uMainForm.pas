@@ -95,6 +95,7 @@ type
     FScanProjectMenuItem: TMenuItem;
     FModulesManagementMenuItem: TMenuItem;
     FProjectTreePopupMenu: TPopupMenu;
+    FAnalyzeSelectedCodeQualityMenuItem: TMenuItem;
     FCreateModuleMenuItem: TMenuItem;
     FCreateSubmoduleMenuItem: TMenuItem;
     FEditModulePropertiesMenuItem: TMenuItem;
@@ -151,6 +152,7 @@ type
       const AMessage: string);
     procedure ModuleManagementMenuItemClick(Sender: TObject);
     procedure AnalyzeCodeQualityMenuItemClick(Sender: TObject);
+    procedure AnalyzeSelectedCodeQualityMenuItemClick(Sender: TObject);
     procedure ExportCodeQualityReportMenuItemClick(Sender: TObject);
     procedure CodeQualityToolStatusMenuItemClick(Sender: TObject);
     procedure GenerateFlowchartMenuItemClick(Sender: TObject);
@@ -179,6 +181,7 @@ type
     procedure RefreshAnalyzerView;
     procedure RefreshAnalyzerFiles;
     procedure RunPHPHealthCheck;
+    procedure RunCodeQualityAnalysis(const AScopePath, AScopeDescription: string);
     procedure ScanProjectMenuItemClick(Sender: TObject);
     procedure SetModuleManagementActionEnabled(AAction: TModuleManagementAction;
       AEnabled: Boolean);
@@ -670,6 +673,15 @@ begin
   FProjectTreePopupMenu.OnPopup := @ProjectTreePopupMenuPopup;
   ProjectTreeView.PopupMenu := FProjectTreePopupMenu;
 
+  FAnalyzeSelectedCodeQualityMenuItem := TMenuItem.Create(FProjectTreePopupMenu);
+  FAnalyzeSelectedCodeQualityMenuItem.Caption := 'Analyze Code &Quality';
+  FAnalyzeSelectedCodeQualityMenuItem.Enabled := False;
+  FAnalyzeSelectedCodeQualityMenuItem.OnClick :=
+    @AnalyzeSelectedCodeQualityMenuItemClick;
+  FProjectTreePopupMenu.Items.Add(FAnalyzeSelectedCodeQualityMenuItem);
+  FProjectTreePopupMenu.Items.Add(TMenuItem.Create(FProjectTreePopupMenu));
+  FProjectTreePopupMenu.Items[FProjectTreePopupMenu.Items.Count - 1].Caption := '-';
+
   FPopupCreateModuleMenuItem := AddModuleManagementPopupItem(mmaCreateModule);
   FPopupCreateSubmoduleMenuItem := AddModuleManagementPopupItem(mmaCreateSubmodule);
   FPopupEditModulePropertiesMenuItem :=
@@ -921,6 +933,42 @@ begin
 end;
 
 procedure TMainForm.AnalyzeCodeQualityMenuItemClick(Sender: TObject);
+begin
+  RunCodeQualityAnalysis('', 'Entire project');
+end;
+
+procedure TMainForm.AnalyzeSelectedCodeQualityMenuItemClick(Sender: TObject);
+var
+  NodeInfo: TProjectExplorerNodeInfo;
+  ScopeDescription: string;
+begin
+  NodeInfo := CurrentProjectExplorerNodeInfo;
+  if not Assigned(NodeInfo) then
+    Exit;
+
+  case NodeInfo.Kind of
+    penModule:
+      ScopeDescription := 'Module: ' + NodeInfo.ModuleName;
+    penSubmodule:
+      ScopeDescription := 'Submodule: ' + NodeInfo.SubmoduleName;
+    penFile:
+      begin
+        if not SameText(ExtractFileExt(NodeInfo.Path), '.php') then
+        begin
+          ShowMessage('Code Quality can analyze selected PHP files only.');
+          Exit;
+        end;
+        ScopeDescription := 'File: ' + NodeInfo.Path;
+      end;
+  else
+    Exit;
+  end;
+
+  RunCodeQualityAnalysis(NodeInfo.Path, ScopeDescription);
+end;
+
+procedure TMainForm.RunCodeQualityAnalysis(const AScopePath,
+  AScopeDescription: string);
 var
   I: Integer;
   Finding: TCodeQualityFinding;
@@ -932,7 +980,11 @@ begin
     Exit;
   end;
 
-  Report := FCodeQualityService.AnalyzeProject(FProjectSession.CurrentProject);
+  if AScopePath = '' then
+    Report := FCodeQualityService.AnalyzeProject(FProjectSession.CurrentProject)
+  else
+    Report := FCodeQualityService.AnalyzeScope(FProjectSession.CurrentProject,
+      AScopePath, AScopeDescription);
   try
     ClearLastCodeQualityReport;
     FLastCodeQualityReport := Report;
@@ -942,6 +994,7 @@ begin
 
     FLogger.Info('Code Quality foundation report created for: ' +
       FLastCodeQualityReport.ProjectPath);
+    FLogger.Info('Code Quality scope: ' + FLastCodeQualityReport.ScopeDescription);
     for I := 0 to FLastCodeQualityReport.Findings.Count - 1 do
     begin
       Finding := TCodeQualityFinding(FLastCodeQualityReport.Findings[I]);
@@ -952,6 +1005,7 @@ begin
 
     ShowMessage('Code Quality service is ready.' + LineEnding + LineEnding +
       'Project: ' + FLastCodeQualityReport.ProjectPath + LineEnding +
+      'Scope: ' + FLastCodeQualityReport.ScopeDescription + LineEnding +
       'Findings: ' + IntToStr(FLastCodeQualityReport.Findings.Count) + LineEnding +
       'Critical: ' + IntToStr(FLastCodeQualityReport.CountBySeverity(cqsCritical)) +
       LineEnding +
@@ -1804,6 +1858,12 @@ begin
     (NodeInfo.Kind = penModule);
   IsSubmoduleNode := ProjectOpen and Assigned(NodeInfo) and
     (NodeInfo.Kind = penSubmodule);
+
+  if Assigned(FAnalyzeSelectedCodeQualityMenuItem) then
+    FAnalyzeSelectedCodeQualityMenuItem.Enabled := ProjectOpen and
+      Assigned(NodeInfo) and ((NodeInfo.Kind = penModule) or
+      (NodeInfo.Kind = penSubmodule) or ((NodeInfo.Kind = penFile) and
+      SameText(ExtractFileExt(NodeInfo.Path), '.php')));
 
   SetModuleManagementActionEnabled(mmaCreateModule, ProjectOpen);
   SetModuleManagementActionEnabled(mmaCreateSubmodule, IsModuleNode);

@@ -98,6 +98,8 @@ type
   TCodeQualityReport = class
   private
     FProjectPath: string;
+    FScopeDescription: string;
+    FScopePath: string;
     FFindings: TList;
     FToolStatuses: TList;
     FGeneratedAt: TDateTime;
@@ -110,6 +112,8 @@ type
     function CountBySeverity(ASeverity: TCodeQualitySeverity): Integer;
     function CountByRisk(ARisk: TCodeQualityRisk): Integer;
     property ProjectPath: string read FProjectPath;
+    property ScopeDescription: string read FScopeDescription write FScopeDescription;
+    property ScopePath: string read FScopePath write FScopePath;
     property Findings: TList read FFindings;
     property ToolStatuses: TList read FToolStatuses;
     property GeneratedAt: TDateTime read FGeneratedAt write FGeneratedAt;

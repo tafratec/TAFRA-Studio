@@ -24,7 +24,9 @@ type
     procedure AddToolFinding(AReport: TCodeQualityReport;
       const AToolName, AToolPath, AConfigPath: string);
     procedure AddInitialTAFRAChecks(AReport: TCodeQualityReport;
-      AProject: TTAFRAProject);
+      AProject: TTAFRAProject; const AScopePath: string);
+    procedure AddAnalysisTargets(AArguments: TStrings;
+      const AProjectPath, AScopePath: string; AInitialCount: Integer);
     function DetectPHPCSFixerPath(const AProjectPath: string): string;
     function DetectPHPCSPath(const AProjectPath: string): string;
     function DetectPHPStanPath(const AProjectPath: string): string;
@@ -42,6 +44,7 @@ type
     function IsExcludedPath(const ARelativePath: string): Boolean;
     function IsIncludedPath(const ARelativePath: string): Boolean;
     function NormalizeRelativePath(const APath: string): string;
+    function PathIsInScope(const APath, AScopePath: string): Boolean;
     procedure ParsePHPCSFixerOutput(AReport: TCodeQualityReport;
       const AOutput: string);
     procedure ParsePHPCSOutput(AReport: TCodeQualityReport;
@@ -52,17 +55,21 @@ type
     function ProjectToolConfigPath(const AProjectPath: string;
       const ACandidates: array of string): string;
     procedure RunPHPCSFixerDryRun(AReport: TCodeQualityReport;
-      AProject: TTAFRAProject);
+      AProject: TTAFRAProject; const AScopePath: string);
     procedure RunPHPCSAnalysis(AReport: TCodeQualityReport;
-      AProject: TTAFRAProject);
+      AProject: TTAFRAProject; const AScopePath: string);
     procedure RunPHPStanAnalysis(AReport: TCodeQualityReport;
-      AProject: TTAFRAProject);
+      AProject: TTAFRAProject; const AScopePath: string);
     procedure RunReadOnlyAnalyses(AReport: TCodeQualityReport;
-      AProject: TTAFRAProject);
+      AProject: TTAFRAProject; const AScopePath: string);
+    function AnalyzeInternal(AProject: TTAFRAProject; const AScopePath,
+      AScopeDescription: string): TCodeQualityReport;
   public
     constructor Create(AToolRunner: TCodeQualityToolRunner; AAppPaths: TAppPaths);
     destructor Destroy; override;
     function AnalyzeProject(AProject: TTAFRAProject): TCodeQualityReport;
+    function AnalyzeScope(AProject: TTAFRAProject; const AScopePath,
+      AScopeDescription: string): TCodeQualityReport;
     property Configuration: TCodeQualityConfiguration read FConfiguration;
     property ToolRunner: TCodeQualityToolRunner read FToolRunner;
   end;
@@ -266,6 +273,41 @@ function TCodeQualityService.NormalizeRelativePath(const APath: string): string;
 begin
   Result := StringReplace(APath, '/', DirectorySeparator, [rfReplaceAll]);
   Result := StringReplace(Result, '\', DirectorySeparator, [rfReplaceAll]);
+end;
+
+function TCodeQualityService.PathIsInScope(const APath,
+  AScopePath: string): Boolean;
+var
+  NormalizedPath: string;
+  NormalizedScope: string;
+begin
+  if AScopePath = '' then
+    Exit(True);
+
+  NormalizedPath := ExcludeTrailingPathDelimiter(ExpandFileName(APath));
+  NormalizedScope := ExcludeTrailingPathDelimiter(ExpandFileName(AScopePath));
+  Result := SameText(NormalizedPath, NormalizedScope) or
+    (DirectoryExists(NormalizedScope) and
+      SameText(Copy(NormalizedPath, 1, Length(IncludeTrailingPathDelimiter(
+        NormalizedScope))), IncludeTrailingPathDelimiter(NormalizedScope)));
+end;
+
+procedure TCodeQualityService.AddAnalysisTargets(AArguments: TStrings;
+  const AProjectPath, AScopePath: string; AInitialCount: Integer);
+var
+  I: Integer;
+begin
+  if AScopePath <> '' then
+  begin
+    AArguments.Add(AScopePath);
+    Exit;
+  end;
+
+  for I := 0 to FConfiguration.IncludedPaths.Count - 1 do
+    if DirectoryExists(ProjectPath(AProjectPath, FConfiguration.IncludedPaths[I])) then
+      AArguments.Add(FConfiguration.IncludedPaths[I]);
+  if AArguments.Count = AInitialCount then
+    AArguments.Add(AProjectPath);
 end;
 
 function TCodeQualityService.IsExcludedPath(const ARelativePath: string
@@ -710,10 +752,9 @@ begin
 end;
 
 procedure TCodeQualityService.RunPHPCSFixerDryRun(
-  AReport: TCodeQualityReport; AProject: TTAFRAProject);
+  AReport: TCodeQualityReport; AProject: TTAFRAProject; const AScopePath: string);
 var
   Args: TStringList;
-  I: Integer;
   ConfigPath: string;
   ProcessResult: TProcessResult;
   ToolPath: string;
@@ -743,13 +784,7 @@ begin
     if ConfigPath <> '' then
       Args.Add('--config=' + ConfigPath);
     Args.Add('--');
-    for I := 0 to FConfiguration.IncludedPaths.Count - 1 do
-      if DirectoryExists(ProjectPath(AProject.RootPath,
-        FConfiguration.IncludedPaths[I])) then
-        Args.Add(FConfiguration.IncludedPaths[I]);
-
-    if Args.Count = 5 then
-      Args.Add(AProject.RootPath);
+    AddAnalysisTargets(Args, AProject.RootPath, AScopePath, Args.Count);
 
     ProcessResult := ExecuteAnalysisTool(ToolPath, Args,
       AProject.RootPath, FConfiguration.TimeoutMS, AReport, 'PHP-CS-Fixer');
@@ -767,10 +802,9 @@ begin
 end;
 
 procedure TCodeQualityService.RunPHPCSAnalysis(AReport: TCodeQualityReport;
-  AProject: TTAFRAProject);
+  AProject: TTAFRAProject; const AScopePath: string);
 var
   Args: TStringList;
-  I: Integer;
   ConfigPath: string;
   ProcessResult: TProcessResult;
   ToolPath: string;
@@ -796,13 +830,7 @@ begin
     Args.Add('--report=json');
     if ConfigPath <> '' then
       Args.Add('--standard=' + ConfigPath);
-    for I := 0 to FConfiguration.IncludedPaths.Count - 1 do
-      if DirectoryExists(ProjectPath(AProject.RootPath,
-        FConfiguration.IncludedPaths[I])) then
-        Args.Add(FConfiguration.IncludedPaths[I]);
-
-    if Args.Count = 1 then
-      Args.Add(AProject.RootPath);
+    AddAnalysisTargets(Args, AProject.RootPath, AScopePath, Args.Count);
 
     ProcessResult := ExecuteAnalysisTool(ToolPath, Args,
       AProject.RootPath, FConfiguration.TimeoutMS, AReport, 'PHPCS');
@@ -820,10 +848,9 @@ begin
 end;
 
 procedure TCodeQualityService.RunPHPStanAnalysis(AReport: TCodeQualityReport;
-  AProject: TTAFRAProject);
+  AProject: TTAFRAProject; const AScopePath: string);
 var
   Args: TStringList;
-  I: Integer;
   ConfigPath: string;
   ProcessResult: TProcessResult;
   ToolPath: string;
@@ -851,13 +878,7 @@ begin
     Args.Add('--no-progress');
     if ConfigPath <> '' then
       Args.Add('--configuration=' + ConfigPath);
-    for I := 0 to FConfiguration.IncludedPaths.Count - 1 do
-      if DirectoryExists(ProjectPath(AProject.RootPath,
-        FConfiguration.IncludedPaths[I])) then
-        Args.Add(FConfiguration.IncludedPaths[I]);
-
-    if Args.Count = 3 then
-      Args.Add(AProject.RootPath);
+    AddAnalysisTargets(Args, AProject.RootPath, AScopePath, Args.Count);
 
     ProcessResult := ExecuteAnalysisTool(ToolPath, Args,
       AProject.RootPath, FConfiguration.TimeoutMS, AReport, 'PHPStan');
@@ -875,7 +896,7 @@ begin
 end;
 
 procedure TCodeQualityService.AddInitialTAFRAChecks(
-  AReport: TCodeQualityReport; AProject: TTAFRAProject);
+  AReport: TCodeQualityReport; AProject: TTAFRAProject; const AScopePath: string);
 var
   FileText: TStringList;
   I: Integer;
@@ -885,7 +906,7 @@ begin
   if not Assigned(AReport) or not Assigned(AProject) then
     Exit;
 
-  if not DirectoryExists(AProject.RootPath + DirectorySeparator + 'app' +
+  if (AScopePath = '') and not DirectoryExists(AProject.RootPath + DirectorySeparator + 'app' +
     DirectorySeparator + 'modules') then
     AReport.AddFinding(TCodeQualityFinding.Create(
       'TAFRA Rules',
@@ -903,6 +924,9 @@ begin
   begin
     ProjectFile := TTAFRAProjectFile(AProject.Files[I]);
     if not SameText(ProjectFile.Extension, '.php') then
+      Continue;
+
+    if not PathIsInScope(ProjectFile.Path, AScopePath) then
       Continue;
 
     if IsExcludedPath(ProjectFile.RelativePath) or
@@ -947,19 +971,19 @@ begin
 end;
 
 procedure TCodeQualityService.RunReadOnlyAnalyses(
-  AReport: TCodeQualityReport; AProject: TTAFRAProject);
+  AReport: TCodeQualityReport; AProject: TTAFRAProject; const AScopePath: string);
 begin
   if not Assigned(AReport) or not Assigned(AProject) or not Assigned(FToolRunner) then
     Exit;
 
-  RunPHPCSFixerDryRun(AReport, AProject);
-  RunPHPCSAnalysis(AReport, AProject);
-  RunPHPStanAnalysis(AReport, AProject);
-  AddInitialTAFRAChecks(AReport, AProject);
+  RunPHPCSFixerDryRun(AReport, AProject, AScopePath);
+  RunPHPCSAnalysis(AReport, AProject, AScopePath);
+  RunPHPStanAnalysis(AReport, AProject, AScopePath);
+  AddInitialTAFRAChecks(AReport, AProject, AScopePath);
 end;
 
-function TCodeQualityService.AnalyzeProject(
-  AProject: TTAFRAProject): TCodeQualityReport;
+function TCodeQualityService.AnalyzeInternal(AProject: TTAFRAProject;
+  const AScopePath, AScopeDescription: string): TCodeQualityReport;
 begin
   if Assigned(AProject) then
     Result := TCodeQualityReport.Create(AProject.RootPath)
@@ -983,6 +1007,8 @@ begin
   end;
 
   Result.GeneratedAt := Now;
+  Result.ScopePath := AScopePath;
+  Result.ScopeDescription := AScopeDescription;
   Result.AddFinding(TCodeQualityFinding.Create(
     'TAFRA Studio',
     AProject.RootPath,
@@ -997,7 +1023,24 @@ begin
 
   AddConfigurationFinding(Result);
   AddToolDetectionFindings(Result, AProject);
-  RunReadOnlyAnalyses(Result, AProject);
+  RunReadOnlyAnalyses(Result, AProject, AScopePath);
+end;
+
+function TCodeQualityService.AnalyzeProject(
+  AProject: TTAFRAProject): TCodeQualityReport;
+begin
+  Result := AnalyzeInternal(AProject, '', 'Entire project');
+end;
+
+function TCodeQualityService.AnalyzeScope(AProject: TTAFRAProject;
+  const AScopePath, AScopeDescription: string): TCodeQualityReport;
+begin
+  if not Assigned(AProject) then
+    Exit(AnalyzeInternal(nil, '', 'No project'));
+  if (AScopePath = '') or not (FileExists(AScopePath) or DirectoryExists(AScopePath)) or
+    not PathIsInScope(AScopePath, AProject.RootPath) then
+    Exit(AnalyzeInternal(nil, '', 'Invalid scope'));
+  Result := AnalyzeInternal(AProject, AScopePath, AScopeDescription);
 end;
 
 end.

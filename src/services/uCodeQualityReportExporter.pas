@@ -57,11 +57,11 @@ var
 begin
   Lines := TStringList.Create;
   try
-    Lines.Add('tool,file_path,relative_path,line,column,category,severity,risk,message,recommendation');
+    Lines.Add('scope,tool,file_path,relative_path,line,column,category,severity,risk,message,recommendation');
     for I := 0 to AReport.Findings.Count - 1 do
     begin
       Finding := TCodeQualityFinding(AReport.Findings[I]);
-      Lines.Add(CsvValue(Finding.ToolName) + ',' +
+      Lines.Add(CsvValue(AReport.ScopeDescription) + ',' + CsvValue(Finding.ToolName) + ',' +
         CsvValue(Finding.FilePath) + ',' + CsvValue(Finding.RelativePath) + ',' +
         IntToStr(Finding.LineNumber) + ',' + IntToStr(Finding.ColumnNumber) + ',' +
         CsvValue(Finding.Category) + ',' +
@@ -94,6 +94,7 @@ begin
       '</style></head><body>');
     Lines.Add('<h1>TAFRA Studio Code Quality Report</h1>');
     Lines.Add('<p><strong>Project:</strong> ' + HtmlEncode(AReport.ProjectPath) + '<br>');
+    Lines.Add('<strong>Scope:</strong> ' + HtmlEncode(AReport.ScopeDescription) + '<br>');
     Lines.Add('<strong>Generated:</strong> ' + HtmlEncode(DateTimeToStr(AReport.GeneratedAt)) + '<br>');
     Lines.Add('<strong>Findings:</strong> ' + IntToStr(AReport.Findings.Count) +
       ' (Critical: ' + IntToStr(AReport.CountBySeverity(cqsCritical)) +
@@ -132,6 +133,8 @@ begin
   Root := TJSONObject.Create;
   try
     Root.Add('project_path', AReport.ProjectPath);
+    Root.Add('scope_description', AReport.ScopeDescription);
+    Root.Add('scope_path', AReport.ScopePath);
     Root.Add('generated_at', FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss',
       AReport.GeneratedAt));
     Summary := TJSONObject.Create;
