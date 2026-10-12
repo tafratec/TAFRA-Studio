@@ -8,7 +8,7 @@
       <Unit>
         <Filename Value="tafrastudio.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="30"/>
       </Unit>
       <Unit>
         <Filename Value="src\forms\uMainForm.pas"/>
@@ -17,59 +17,139 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <IsVisibleTab Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="30"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src\forms\uSettingsForm.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\forms\uPasswordGeneratorForm.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\forms\uGzipBase64DecoderForm.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
         <Filename Value="src\core\uResultTypes.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="30"/>
       </Unit>
       <Unit>
         <Filename Value="src\core\uAppPaths.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="30"/>
       </Unit>
       <Unit>
         <Filename Value="src\core\uLogger.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="30"/>
       </Unit>
       <Unit>
         <Filename Value="src\services\uProcessRunner.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="30"/>
       </Unit>
       <Unit>
         <Filename Value="src\services\uPHPToolRunner.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\services\uSettingsService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\services\uComposerRunner.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\services\uSourceFileService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\services\uThemeService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\services\uPasswordGeneratorService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\services\uGzipBase64DecoderService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\services\uCodeQualityToolRunner.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\services\uCodeQualityService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\services\uFlowchartService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
       </Unit>
       <Unit>
         <Filename Value="src\models\uProjectModel.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\models\uStudioSettings.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\models\uCodeQualityModel.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
       </Unit>
       <Unit>
         <Filename Value="src\framework\uTAFRAFrameworkRules.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="30"/>
       </Unit>
       <Unit>
         <Filename Value="src\services\uProjectScanner.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="30"/>
       </Unit>
       <Unit>
         <Filename Value="src\services\uProjectSession.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\services\uProjectAnalyzer.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\services\uModuleManagementService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="30"/>
       </Unit>
       <Unit>
         <Filename Value="src\ui\uProjectExplorerPresenter.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="30"/>
       </Unit>
     </Units>
     <JumpHistory HistoryIndex="-1"/>
