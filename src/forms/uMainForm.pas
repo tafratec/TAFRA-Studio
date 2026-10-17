@@ -11,7 +11,7 @@ uses
   uProjectAnalyzer, uTAFRAFrameworkRules, uProjectExplorerPresenter,
   uModuleManagementService, uSettingsForm, uSourceFileService, uResultTypes,
   uProjectModel, uCodeQualityModel, uThemeService, uPasswordGeneratorForm,
-  uGzipBase64DecoderForm,
+  uGzipBase64DecoderForm, uTestPointLogViewerForm,
   uCodeQualityService, uCodeQualityToolRunner, SynEdit, SynHighlighterPHP,
   uFlowchartService, SynHighlighterJScript, SynHighlighterCss, SynHighlighterHtml,
   SynHighlighterSQL, uCodeQualityReportExporter;
@@ -37,6 +37,7 @@ type
     OutputSplitter: TSplitter;
     GzipBase64DecoderMenuItem: TMenuItem;
     PasswordGeneratorMenuItem: TMenuItem;
+    TestPointLogViewerMenuItem: TMenuItem;
     ProjectMenuItem: TMenuItem;
     ProjectExplorerActionsPanel: TPanel;
     ProjectExplorerMenuItem: TMenuItem;
@@ -65,6 +66,7 @@ type
     procedure OutputMenuItemClick(Sender: TObject);
     procedure GzipBase64DecoderMenuItemClick(Sender: TObject);
     procedure PasswordGeneratorMenuItemClick(Sender: TObject);
+    procedure TestPointLogViewerMenuItemClick(Sender: TObject);
     procedure ProjectExplorerMenuItemClick(Sender: TObject);
     procedure ProjectTreePopupMenuPopup(Sender: TObject);
     procedure ProjectTreeViewChange(Sender: TObject; Node: TTreeNode);
@@ -267,6 +269,19 @@ begin
   FProcessRunner.Free;
   FLogger.Free;
   FAppPaths.Free;
+end;
+
+procedure TMainForm.TestPointLogViewerMenuItemClick(Sender: TObject);
+var
+  LogViewerForm: TTestPointLogViewerForm;
+begin
+  LogViewerForm := TTestPointLogViewerForm.Create(Self, FThemeService,
+    FSettingsService.Settings.ThemeName);
+  try
+    LogViewerForm.ShowModal;
+  finally
+    LogViewerForm.Free;
+  end;
 end;
 
 procedure TMainForm.ApplicationSettingsMenuItemClick(Sender: TObject);

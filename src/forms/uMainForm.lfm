@@ -195,6 +195,10 @@ object MainForm: TMainForm
         Caption = '&Password Generator...'
         OnClick = PasswordGeneratorMenuItemClick
       end
+      object TestPointLogViewerMenuItem: TMenuItem
+        Caption = '&Test Point Log Viewer...'
+        OnClick = TestPointLogViewerMenuItemClick
+      end
     end
     object SettingsMenuItem: TMenuItem
       Caption = '&Settings'

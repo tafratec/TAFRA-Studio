@@ -211,6 +211,11 @@ begin
   end
   else if AControl is TCustomTreeView then
     ApplyTreeViewTheme(TCustomTreeView(AControl), ATheme)
+  else if AControl is TCustomListView then
+  begin
+    TCustomListView(AControl).Color := ATheme.EditorColor;
+    TCustomListView(AControl).Font.Color := ATheme.EditorTextColor;
+  end
   else if AControl is TCustomComboBox then
   begin
     TCustomComboBox(AControl).Color := ATheme.InputColor;

@@ -55,6 +55,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src\forms\uTestPointLogViewerForm.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src\core\uResultTypes.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -99,6 +103,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src\services\uTestPointLogService.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src\services\uCodeQualityToolRunner.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -124,6 +132,10 @@
       </Unit>
       <Unit>
         <Filename Value="src\models\uCodeQualityModel.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\models\uTestPointLogModel.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
